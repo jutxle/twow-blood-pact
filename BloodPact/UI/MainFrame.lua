@@ -71,6 +71,7 @@ function BloodPact_MainFrame:CreateTitleBar()
     titleBar:SetBackdropColor(0.08, 0.08, 0.08, 1)
 
     -- Make window draggable via title bar
+    titleBar:EnableMouse(true)
     titleBar:RegisterForDrag("LeftButton")
     titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
     titleBar:SetScript("OnDragStop", function()
