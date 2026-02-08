@@ -1,6 +1,27 @@
 -- Blood Pact - Logger
 -- Color-coded chat output for debug/info/warning/error messages
 
+-- ============================================================
+-- Lua 5.0 compatibility shims (WoW 1.12 uses Lua 5.0)
+-- ============================================================
+
+-- string.match was added in Lua 5.1; polyfill for Lua 5.0
+if not string.match then
+    string.match = function(s, pattern, init)
+        local t = {string.find(s, pattern, init)}
+        if not t[1] then return nil end
+        if table.getn(t) > 2 then
+            local caps = {}
+            for i = 3, table.getn(t) do
+                caps[i - 2] = t[i]
+            end
+            return unpack(caps)
+        else
+            return string.sub(s, t[1], t[2])
+        end
+    end
+end
+
 BloodPact_Logger = {}
 
 BloodPact_Logger.LEVEL = {

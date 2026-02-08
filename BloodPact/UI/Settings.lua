@@ -11,7 +11,8 @@ local panel = nil
 
 function BloodPact_Settings:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
-    panel:SetAllPoints(parent)
+    panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
     panel:Hide()
 
     local yOffset = -8

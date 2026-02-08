@@ -95,7 +95,7 @@ function BloodPact_MainFrame:CreateTitleBar()
     local closeTex = closeBtn:CreateFontString(nil, "OVERLAY")
     closeTex:SetFont(BP_FONT, BP_FONT_SIZE_MEDIUM, "OUTLINE")
     closeTex:SetText("X")
-    closeTex:SetPoint("CENTER")
+    closeTex:SetPoint("CENTER", closeBtn, "CENTER", 0, 0)
     closeTex:SetTextColor(0.8, 0.3, 0.3, 1)
     closeBtn:SetScript("OnClick", function() BloodPact_MainFrame:Hide() end)
 
@@ -123,7 +123,7 @@ function BloodPact_MainFrame:CreateTabBar()
 
         local label = BP_CreateFontString(tab, BP_FONT_SIZE_SMALL)
         label:SetText(tabNames[i])
-        label:SetPoint("CENTER")
+        label:SetPoint("CENTER", tab, "CENTER", 0, 0)
         tab.label = label
 
         local tabIndex = i

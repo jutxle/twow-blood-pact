@@ -36,6 +36,8 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleWipe()
     elseif string.sub(input, 1, 6) == "export" then
         BloodPact_Logger:Print("Export functionality not yet implemented.")
+    elseif input == "status" then
+        self:ShowStatus()
     elseif input == "help" then
         self:ShowHelp()
     elseif input == "debug" then
@@ -94,6 +96,26 @@ function BloodPact_CommandHandler:HandleWipe()
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
     end
+end
+
+function BloodPact_CommandHandler:ShowStatus()
+    BloodPact_Logger:Print("=== Blood Pact Status ===")
+    local accountID = BloodPact_AccountIdentity:GetAccountID() or "None"
+    BloodPact_Logger:Print("Account ID: " .. accountID)
+    local deaths = BloodPact_DeathDataManager:GetTotalDeaths()
+    BloodPact_Logger:Print("Total deaths tracked: " .. tostring(deaths))
+    if BloodPact_PactManager:IsInPact() then
+        local pact = BloodPactAccountDB.pact
+        BloodPact_Logger:Print("Pact: " .. (pact.pactName or "?") .. " [" .. (pact.joinCode or "?") .. "]")
+        local memberCount = 0
+        if pact.members then
+            for _ in pairs(pact.members) do memberCount = memberCount + 1 end
+        end
+        BloodPact_Logger:Print("Members: " .. tostring(memberCount))
+    else
+        BloodPact_Logger:Print("Not in a pact.")
+    end
+    BloodPact_Logger:Print("UI panels: " .. (BloodPact_PersonalDashboard.panel and "OK" or "MISSING"))
 end
 
 function BloodPact_CommandHandler:ShowHelp()

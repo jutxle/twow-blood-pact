@@ -16,6 +16,7 @@ local BP_Timers = {
 
 local BP_LoginSyncPending = false
 local BP_JoinTimeoutActive = false
+local BP_LastUpdateTime = 0
 
 -- ============================================================
 -- Event Handler
@@ -78,7 +79,12 @@ end)
 -- OnUpdate - Timer Accumulator
 -- ============================================================
 
-BloodPactFrame:SetScript("OnUpdate", function(elapsed)
+BloodPactFrame:SetScript("OnUpdate", function()
+    local now = GetTime()
+    if BP_LastUpdateTime == 0 then BP_LastUpdateTime = now end
+    local elapsed = now - BP_LastUpdateTime
+    BP_LastUpdateTime = now
+
     -- Death detector tick (every 0.1s)
     BP_Timers.deathTick = BP_Timers.deathTick + elapsed
     if BP_Timers.deathTick >= BLOODPACT_SUSPECT_TIMER_INTERVAL then

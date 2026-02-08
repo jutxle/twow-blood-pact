@@ -12,7 +12,8 @@ local memberRows = {}
 
 function BloodPact_PactDashboard:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
-    panel:SetAllPoints(parent)
+    panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
     panel:Hide()
 
     self:CreatePactHeader()
@@ -103,9 +104,10 @@ function BloodPact_PactDashboard:CreateMemberList()
     scrollFrame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 0, -2)
     scrollFrame:SetPoint("BOTTOMRIGHT", listFrame, "BOTTOMRIGHT", -4, 4)
     scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local current = self:GetVerticalScroll()
-        self:SetVerticalScroll(math.max(0, current - delta * 20))
+    scrollFrame:SetScript("OnMouseWheel", function()
+        local delta = arg1
+        local current = scrollFrame:GetVerticalScroll()
+        scrollFrame:SetVerticalScroll(math.max(0, current - delta * 20))
     end)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)

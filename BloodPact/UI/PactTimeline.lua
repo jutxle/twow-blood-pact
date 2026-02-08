@@ -13,7 +13,8 @@ local currentMemberFilter = nil  -- nil = all members
 
 function BloodPact_PactTimeline:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
-    panel:SetAllPoints(parent)
+    panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
     panel:Hide()
 
     self:CreateFilterBar()
@@ -54,9 +55,10 @@ function BloodPact_PactTimeline:CreateScrollArea()
     scrollFrame:SetPoint("TOPLEFT", panel.filterBar, "BOTTOMLEFT", 0, -2)
     scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 30)
     scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local current = self:GetVerticalScroll()
-        self:SetVerticalScroll(math.max(0, current - delta * 30))
+    scrollFrame:SetScript("OnMouseWheel", function()
+        local delta = arg1
+        local current = scrollFrame:GetVerticalScroll()
+        scrollFrame:SetVerticalScroll(math.max(0, current - delta * 30))
     end)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
