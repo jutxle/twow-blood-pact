@@ -1,0 +1,32 @@
+## Interface: 11200
+## Title: Blood Pact
+## Notes: Hardcore death tracker for Turtle WoW
+## Author: Justin
+## Version: 1.0.0
+## SavedVariables: BloodPactAccountDB
+
+Utils\Logger.lua
+Utils\Serialization.lua
+Utils\RateLimiter.lua
+Config.lua
+Data\AccountIdentity.lua
+Data\SavedVariablesHandler.lua
+Data\DeathDataManager.lua
+CombatLog\DataExtractor.lua
+CombatLog\Parser.lua
+CombatLog\DeathDetector.lua
+Pact\JoinCodeGenerator.lua
+Pact\ConflictResolver.lua
+Pact\OwnershipManager.lua
+Pact\PactManager.lua
+Pact\SyncEngine.lua
+Commands\CommandHandler.lua
+Commands\ExportHandler.lua
+UI\PFUIStyles.lua
+UI\MainFrame.lua
+UI\PersonalDashboard.lua
+UI\PersonalTimeline.lua
+UI\PactDashboard.lua
+UI\PactTimeline.lua
+UI\Settings.lua
+Core.lua
