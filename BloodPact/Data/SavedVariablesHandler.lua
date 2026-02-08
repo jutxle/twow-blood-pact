@@ -31,7 +31,7 @@ function BloodPact_SavedVariablesHandler:ValidateData()
         BloodPactAccountDB.config = {
             uiScale            = 1.0,
             showTimeline       = true,
-            manualHardcoreFlag = false,
+            manualHardcoreFlag = true,
             windowX            = nil,
             windowY            = nil
         }
