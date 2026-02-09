@@ -76,7 +76,7 @@ function BloodPact_Settings:Create(parent)
         joinBtn:SetPoint("LEFT", panel.joinCodeInput, "RIGHT", 6, 0)
         joinBtn:SetScript("OnClick", function()
             -- Prompt via chat input since we can't easily do inline EditBox
-            BloodPact_Logger:Print("To join a pact, type: |cFFFFAA00/bloodpact join <code>|r")
+            BloodPact_Logger:Print("To join a pact, type: /bloodpact join <code>")
         end)
 
         local orLabel = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
@@ -87,7 +87,7 @@ function BloodPact_Settings:Create(parent)
         local createBtn = BP_CreateButton(section, "Create New Pact", 120, 22)
         createBtn:SetPoint("TOPLEFT", orLabel, "BOTTOMLEFT", 0, -8)
         createBtn:SetScript("OnClick", function()
-            BloodPact_Logger:Print("To create a pact, type: |cFFFFAA00/bloodpact create <name>|r")
+            BloodPact_Logger:Print("To create a pact, type: /bloodpact create <name>")
         end)
 
         section:SetHeight(130)
@@ -98,7 +98,7 @@ function BloodPact_Settings:Create(parent)
         local wipeBtn = BP_CreateButton(section, "Wipe All Data", 110, 22)
         wipeBtn:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
         wipeBtn:SetScript("OnClick", function()
-            BloodPact_Logger:Print("Type |cFFFF4444/bloodpact wipe confirm|r to permanently delete all death data.")
+            BloodPact_Logger:Print("Type /bloodpact wipe confirm to permanently delete all death data.")
         end)
 
         section:SetHeight(50)
@@ -165,7 +165,8 @@ function BloodPact_Settings:Refresh()
     if panel.pactStatusText then
         if BloodPact_PactManager:IsInPact() then
             local pact = BloodPactAccountDB.pact
-            panel.pactStatusText:SetText("In pact: |cFFFF6600" .. (pact.pactName or "?") .. "|r  [" .. (pact.joinCode or "?") .. "]")
+            panel.pactStatusText:SetText("In pact: " .. BP_SanitizeText(pact.pactName or "?") .. "  [" .. (pact.joinCode or "?") .. "]")
+            panel.pactStatusText:SetTextColor(1.0, 0.4, 0.0, 1)
         else
             panel.pactStatusText:SetText("Not in a pact.")
         end

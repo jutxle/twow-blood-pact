@@ -27,10 +27,11 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleCreate(name)
     elseif string.sub(input, 1, 5) == "join " then
         local code = string.sub(input, 6)
-        code = string.upper(string.gsub(code, "%s", ""))
+        -- Strip everything except letters and numbers (handles dashes, spaces, etc.)
+        code = string.upper(string.gsub(code, "[^A-Za-z0-9]", ""))
         self:HandleJoin(code)
     elseif input == "wipe" then
-        BloodPact_Logger:Print("Type |cFFFF4444/bloodpact wipe confirm|r to permanently delete all death data.")
+        BloodPact_Logger:Print("Type /bloodpact wipe confirm to permanently delete all death data.")
         BloodPact_Logger:Print("Your account ID and pact membership will be preserved.")
     elseif input == "wipe confirm" then
         self:HandleWipe()
@@ -46,8 +47,17 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif input == "nodebug" then
         BloodPact_Logger:SetLevel(BloodPact_Logger.LEVEL.WARNING)
         BloodPact_Logger:Print("Debug logging disabled.")
+    elseif string.sub(input, 1, 8) == "simjoin " then
+        local accountName = string.sub(rawInput, 9)
+        self:HandleSimJoin(accountName)
+    elseif string.sub(input, 1, 9) == "simdeath " then
+        local rest = string.sub(rawInput, 10)
+        self:HandleSimDeath(rest)
+    elseif string.sub(input, 1, 10) == "simremove " then
+        local accountName = string.sub(rawInput, 11)
+        self:HandleSimRemove(accountName)
     else
-        BloodPact_Logger:Print("Unknown command. Type |cFFFFAA00/bloodpact help|r for a list of commands.")
+        BloodPact_Logger:Print("Unknown command. Type /bloodpact help for a list of commands.")
     end
 end
 
@@ -58,12 +68,12 @@ function BloodPact_CommandHandler:HandleCreate(name)
     end
 
     if string.len(name) > 32 then
-        BloodPact_Logger:Print("|cFFFF4444Pact name too long.|r Maximum 32 characters.")
+        BloodPact_Logger:Print("Pact name too long. Maximum 32 characters.")
         return
     end
 
     if BloodPact_PactManager:IsInPact() then
-        BloodPact_Logger:Print("|cFFFF4444You are already in a Blood Pact.|r Leave your current pact first.")
+        BloodPact_Logger:Print("You are already in a Blood Pact. Leave your current pact first.")
         BloodPact_Logger:Print("(Note: Leaving pacts not yet implemented in v1.0)")
         return
     end
@@ -78,12 +88,12 @@ function BloodPact_CommandHandler:HandleJoin(code)
     end
 
     if not BloodPact_JoinCodeGenerator:ValidateCodeFormat(code) then
-        BloodPact_Logger:Print("|cFFFF4444Invalid join code format.|r Codes are 8 characters (letters and numbers). Example: A7K9M2X5")
+        BloodPact_Logger:Print("Invalid join code format. Codes are 8 characters (letters and numbers). Example: A7K9M2X5")
         return
     end
 
     if BloodPact_PactManager:IsInPact() then
-        BloodPact_Logger:Print("|cFFFF4444You are already in a Blood Pact.|r Leave your current pact first.")
+        BloodPact_Logger:Print("You are already in a Blood Pact. Leave your current pact first.")
         BloodPact_Logger:Print("(Note: Leaving pacts not yet implemented in v1.0)")
         return
     end
@@ -129,4 +139,151 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact wipe     - Wipe all death data (requires confirmation)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact help     - Show this help message")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp                 - Shortcut for /bloodpact")
+end
+
+-- ============================================================
+-- Simulation Commands (for testing without multiple accounts)
+-- ============================================================
+
+-- /bp simjoin <accountName> - Simulate a player joining your pact
+function BloodPact_CommandHandler:HandleSimJoin(accountName)
+    if not accountName or string.len(accountName) == 0 then
+        BloodPact_Logger:Print("Usage: /bp simjoin <accountName>")
+        return
+    end
+    if not BloodPact_PactManager:IsInPact() then
+        BloodPact_Logger:Print("You must be in a pact first. Use /bp create <name>")
+        return
+    end
+
+    local members = BloodPactAccountDB.pact.members
+    if members[accountName] then
+        BloodPact_Logger:Print("'" .. accountName .. "' is already in the pact.")
+        return
+    end
+
+    -- Add the fake member
+    members[accountName] = {
+        accountID       = accountName,
+        highestLevel    = math.random(1, 40),
+        deathCount      = 0,
+        isAlive         = true,
+        joinedTimestamp = time()
+    }
+
+    BloodPact_Logger:Print("[SIM] '" .. accountName .. "' joined the pact (Lvl " .. tostring(members[accountName].highestLevel) .. ").")
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+end
+
+-- /bp simdeath <accountName> [charName] [level] [zone] [killer]
+-- All args after accountName are optional with sensible defaults
+function BloodPact_CommandHandler:HandleSimDeath(rest)
+    if not rest or string.len(rest) == 0 then
+        BloodPact_Logger:Print("Usage: /bp simdeath <accountName> [charName] [level] [zone] [killer]")
+        return
+    end
+    if not BloodPact_PactManager:IsInPact() then
+        BloodPact_Logger:Print("You must be in a pact first.")
+        return
+    end
+
+    -- Parse space-separated args
+    local args = {}
+    for word in string.gfind(rest, "%S+") do
+        table.insert(args, word)
+    end
+
+    local accountName = args[1]
+    if not accountName then
+        BloodPact_Logger:Print("Usage: /bp simdeath <accountName> [charName] [level] [zone] [killer]")
+        return
+    end
+
+    -- Auto-join the member if they don't exist yet
+    local members = BloodPactAccountDB.pact.members
+    if not members[accountName] then
+        members[accountName] = {
+            accountID       = accountName,
+            highestLevel    = 0,
+            deathCount      = 0,
+            isAlive         = true,
+            joinedTimestamp = time()
+        }
+        BloodPact_Logger:Print("[SIM] Auto-added '" .. accountName .. "' to pact.")
+    end
+
+    local charName = args[2] or (accountName .. "Char")
+    local level    = tonumber(args[3]) or math.random(5, 35)
+    local zone     = args[4] or "Duskwood"
+    local killer   = args[5] or "Stitches"
+
+    -- Build fake death record
+    local deathRecord = {
+        characterName = charName,
+        level         = level,
+        timestamp     = time() - math.random(0, 300),  -- slight past offset
+        serverTime    = date("%Y-%m-%d %H:%M:%S"),
+        zoneName      = zone,
+        subZoneName   = "",
+        killerName    = killer,
+        killerLevel   = math.random(level - 2, level + 5),
+        killerType    = "NPC",
+        copperAmount  = math.random(100, 50000),
+        race          = "Human",
+        class         = "Warrior",
+        totalXP       = (BLOODPACT_XP_PER_LEVEL[level] or 0) + math.random(0, 2000),
+        equippedItems = {},
+        version       = BLOODPACT_SCHEMA_VERSION,
+        accountID     = accountName,
+    }
+
+    -- Process through normal pact death path (store + update member stats)
+    BloodPact_PactManager:OnMemberDeath(accountName, deathRecord)
+
+    BloodPact_Logger:Print("[SIM] " .. accountName .. "'s " .. charName ..
+        " (Lvl " .. tostring(level) .. ") died to " .. killer .. " in " .. zone)
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+end
+
+-- /bp simremove <accountName> - Remove a simulated member from the pact
+function BloodPact_CommandHandler:HandleSimRemove(accountName)
+    if not accountName or string.len(accountName) == 0 then
+        BloodPact_Logger:Print("Usage: /bp simremove <accountName>")
+        return
+    end
+    if not BloodPact_PactManager:IsInPact() then
+        BloodPact_Logger:Print("You must be in a pact first.")
+        return
+    end
+
+    local selfID = BloodPact_AccountIdentity:GetAccountID()
+    if accountName == selfID then
+        BloodPact_Logger:Print("Cannot remove yourself from the pact.")
+        return
+    end
+
+    local members = BloodPactAccountDB.pact.members
+    if not members[accountName] then
+        BloodPact_Logger:Print("'" .. accountName .. "' is not in the pact.")
+        return
+    end
+
+    members[accountName] = nil
+
+    -- Also clean up their synced deaths
+    if BloodPactAccountDB.pact.syncedDeaths then
+        BloodPactAccountDB.pact.syncedDeaths[accountName] = nil
+    end
+
+    BloodPact_Logger:Print("[SIM] Removed '" .. accountName .. "' from the pact.")
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
 end

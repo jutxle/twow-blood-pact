@@ -220,7 +220,7 @@ function BloodPact_PactDashboard:CreateMemberRow(parent, accountID, member, yOff
     row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
     row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, yOffset)
 
-    -- Status icon (text-based: ✓ or ☠)
+    -- Status icon
     local statusIcon = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
     if member.isAlive then
         statusIcon:SetText("✓")

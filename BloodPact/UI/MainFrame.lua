@@ -85,8 +85,9 @@ function BloodPact_MainFrame:CreateTitleBar()
 
     -- Title text
     local title = BP_CreateFontString(titleBar, BP_FONT_SIZE_LARGE)
-    title:SetText("|cFFFF6600Blood Pact|r")
+    title:SetText("Blood Pact")
     title:SetPoint("LEFT", titleBar, "LEFT", 10, 0)
+    title:SetTextColor(1.0, 0.4, 0.0, 1)
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, titleBar)
@@ -193,6 +194,10 @@ function BloodPact_MainFrame:SwitchTab(tabIndex)
 
     activeTab = tabIndex
     self:UpdateTabHighlight()
+
+    -- Hide any open timelines before switching
+    BloodPact_PersonalTimeline:Hide()
+    BloodPact_PactTimeline:Hide()
 
     -- Show/hide panels
     for i, panel in pairs(tabPanels) do

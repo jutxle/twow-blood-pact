@@ -60,8 +60,8 @@ function BloodPact_PactManager:CreatePact(pactName)
         syncedDeaths = {}
     }
 
-    BloodPact_Logger:Print("Blood Pact created: |cFFFF6600" .. pactName .. "|r")
-    BloodPact_Logger:Print("Join Code: |cFFFFAA00" .. code .. "|r  (share with friends!)")
+    BloodPact_Logger:Print("Blood Pact created: " .. pactName)
+    BloodPact_Logger:Print("Join Code: " .. code .. "  (share with friends!)")
 
     -- Refresh UI
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
@@ -78,7 +78,7 @@ end
 function BloodPact_PactManager:RequestJoin(code)
     code = string.upper(code)
     if not BloodPact_JoinCodeGenerator:ValidateCodeFormat(code) then
-        BloodPact_Logger:Print("|cFFFF4444Invalid join code format.|r")
+        BloodPact_Logger:Print("Invalid join code format.")
         return
     end
 
@@ -100,7 +100,7 @@ end
 -- Called when no response received within timeout
 function BloodPact_PactManager:OnJoinTimeout()
     if BloodPact_PactManager._pendingJoinCode then
-        BloodPact_Logger:Print("|cFFFF4444No pact members responded.|r Make sure at least one member is online.")
+        BloodPact_Logger:Print("No pact members responded. Make sure at least one member is online.")
         BloodPact_PactManager._pendingJoinCode = nil
     end
 end
@@ -157,7 +157,7 @@ function BloodPact_PactManager:OnJoinResponse(data)
         syncedDeaths = {}
     }
 
-    BloodPact_Logger:Print("Successfully joined: |cFFFF6600" .. data.pactName .. "|r")
+    BloodPact_Logger:Print("Successfully joined: " .. data.pactName)
     BloodPact_Logger:Print("Syncing pact data with members...")
 
     -- Request full data sync from the responder
@@ -218,10 +218,13 @@ function BloodPact_PactManager:OnMemberDeath(senderID, deathRecord)
     -- Update member stats
     self:UpdateMemberStats(senderID, deathRecord)
 
-    -- Notify player
-    BloodPact_Logger:Print("|cFFFF4444[Pact]|r " .. senderID .. "'s " ..
-        (deathRecord.characterName or "?") .. " (Lvl " .. tostring(deathRecord.level or 0) ..
-        ") has fallen in " .. (deathRecord.zoneName or "?") .. ".")
+    -- Notify player (sanitize dynamic data to avoid invalid escape codes)
+    local safeName = string.gsub(tostring(deathRecord.characterName or "?"), "|", "")
+    local safeZone = string.gsub(tostring(deathRecord.zoneName or "?"), "|", "")
+    local safeSender = string.gsub(tostring(senderID), "|", "")
+    BloodPact_Logger:Print("[Pact] " .. safeSender .. "'s " ..
+        safeName .. " (Lvl " .. tostring(deathRecord.level or 0) ..
+        ") has fallen in " .. safeZone .. ".")
 
     -- Check ownership transfer if sender was pact owner
     if BloodPactAccountDB.pact.ownerAccountID == senderID then

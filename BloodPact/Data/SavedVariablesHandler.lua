@@ -27,6 +27,9 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     if not BloodPactAccountDB.deaths then
         BloodPactAccountDB.deaths = {}
     end
+    if not BloodPactAccountDB.characters then
+        BloodPactAccountDB.characters = {}
+    end
     if not BloodPactAccountDB.config then
         BloodPactAccountDB.config = {
             uiScale            = 1.0,

@@ -89,19 +89,30 @@ function BloodPact_DeathDataManager:GetTotalDeaths()
     return total
 end
 
--- Get highest level achieved across all characters
+-- Get highest level achieved across all characters (deaths + living characters)
 function BloodPact_DeathDataManager:GetHighestLevel()
-    if not BloodPactAccountDB or not BloodPactAccountDB.deaths then
-        return 0
-    end
     local highest = 0
-    for _, deathList in pairs(BloodPactAccountDB.deaths) do
-        for _, death in ipairs(deathList) do
-            if death.level and death.level > highest then
-                highest = death.level
+
+    -- Check death records
+    if BloodPactAccountDB and BloodPactAccountDB.deaths then
+        for _, deathList in pairs(BloodPactAccountDB.deaths) do
+            for _, death in ipairs(deathList) do
+                if death.level and death.level > highest then
+                    highest = death.level
+                end
             end
         end
     end
+
+    -- Check living character levels
+    if BloodPactAccountDB and BloodPactAccountDB.characters then
+        for _, charData in pairs(BloodPactAccountDB.characters) do
+            if charData.level and charData.level > highest then
+                highest = charData.level
+            end
+        end
+    end
+
     return highest
 end
 
@@ -133,23 +144,47 @@ function BloodPact_DeathDataManager:GetTotalXPLost()
     return total
 end
 
--- Get list of character names with their highest death-level and death count
+-- Get list of character names with their highest level and death count
 function BloodPact_DeathDataManager:GetCharacterSummaries()
-    if not BloodPactAccountDB or not BloodPactAccountDB.deaths then
-        return {}
+    if not BloodPactAccountDB then return {} end
+
+    local charMap = {}  -- charName -> { highestLevel, deathCount }
+
+    -- Gather from death records
+    if BloodPactAccountDB.deaths then
+        for charName, deathList in pairs(BloodPactAccountDB.deaths) do
+            local highestLevel = 0
+            for _, death in ipairs(deathList) do
+                if death.level and death.level > highestLevel then
+                    highestLevel = death.level
+                end
+            end
+            charMap[charName] = {
+                highestLevel = highestLevel,
+                deathCount   = table.getn(deathList)
+            }
+        end
     end
-    local summaries = {}
-    for charName, deathList in pairs(BloodPactAccountDB.deaths) do
-        local highestLevel = 0
-        for _, death in ipairs(deathList) do
-            if death.level and death.level > highestLevel then
-                highestLevel = death.level
+
+    -- Merge in living character data (may have higher levels, or no deaths at all)
+    if BloodPactAccountDB.characters then
+        for charName, charData in pairs(BloodPactAccountDB.characters) do
+            if not charMap[charName] then
+                charMap[charName] = { highestLevel = 0, deathCount = 0 }
+            end
+            if charData.level and charData.level > charMap[charName].highestLevel then
+                charMap[charName].highestLevel = charData.level
             end
         end
+    end
+
+    -- Convert to array
+    local summaries = {}
+    for charName, data in pairs(charMap) do
         table.insert(summaries, {
             characterName = charName,
-            deathCount    = table.getn(deathList),
-            highestLevel  = highestLevel
+            deathCount    = data.deathCount,
+            highestLevel  = data.highestLevel
         })
     end
     -- Sort by highest level descending

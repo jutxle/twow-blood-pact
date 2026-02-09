@@ -112,6 +112,12 @@ function BP_CreateDivider(parent, width)
     return line
 end
 
+-- Sanitize text for display in FontStrings (strip WoW pipe escape codes from dynamic data)
+function BP_SanitizeText(text)
+    if not text then return "" end
+    return string.gsub(tostring(text), "|", "")
+end
+
 -- Get item quality color
 function BP_GetQualityColor(quality)
     if quality == 5 then return BP_Color(BLOODPACT_COLORS.QUALITY_LEGENDARY)

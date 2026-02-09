@@ -208,11 +208,16 @@ function BloodPact_PersonalDashboard:CreateCharRow(parent, summary, yOffset)
     levelText:SetPoint("LEFT", row, "LEFT", 130, 0)
     levelText:SetTextColor(0.4, 1.0, 0.4, 1)
 
-    -- Death count
-    local deathText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    deathText:SetText("(" .. tostring(summary.deathCount) .. " deaths)")
-    deathText:SetPoint("LEFT", row, "LEFT", 200, 0)
-    deathText:SetTextColor(0.8, 0.3, 0.3, 1)
+    -- Status
+    local statusText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
+    if summary.deathCount > 0 then
+        statusText:SetText("DEAD")
+        statusText:SetTextColor(0.8, 0.3, 0.3, 1)
+    else
+        statusText:SetText("ALIVE")
+        statusText:SetTextColor(BP_Color(BLOODPACT_COLORS.ALIVE))
+    end
+    statusText:SetPoint("LEFT", row, "LEFT", 200, 0)
 
     -- View Timeline button
     local viewBtn = BP_CreateButton(row, "Timeline", 70, 18)

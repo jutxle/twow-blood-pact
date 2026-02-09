@@ -1,16 +1,19 @@
 -- Blood Pact - Serialization
 -- Fixed-field message serialization for addon communication
--- Uses pipe-delimited format: TYPE|field1|field2|...
--- Special characters in strings are escaped: | -> \p, \ -> \b, newline -> \n
+-- Uses tilde-delimited format: TYPE~field1~field2~...
+-- Special characters in strings are escaped: ~ -> \d, \ -> \b, newline -> \n
+-- NOTE: We use ~ instead of | because WoW's chat system treats | as an
+-- escape character for color codes, and Turtle WoW's Hooks.lua validates
+-- addon messages for valid escape sequences.
 
 BloodPact_Serialization = {}
 
--- Escape a string value for use in pipe-delimited format
+-- Escape a string value for use in tilde-delimited format
 local function Escape(str)
     if str == nil then return "" end
     str = tostring(str)
     str = string.gsub(str, "\\", "\\b")  -- backslash first
-    str = string.gsub(str, "|", "\\p")   -- pipe separator
+    str = string.gsub(str, "~", "\\d")   -- tilde delimiter
     str = string.gsub(str, "\n", "\\n")  -- newlines
     return str
 end
@@ -19,7 +22,7 @@ end
 local function Unescape(str)
     if str == nil or str == "" then return nil end
     str = string.gsub(str, "\\n", "\n")
-    str = string.gsub(str, "\\p", "|")
+    str = string.gsub(str, "\\d", "~")
     str = string.gsub(str, "\\b", "\\")
     return str
 end
@@ -85,9 +88,9 @@ end
 
 -- ============================================================
 -- Message Type: DEATH_ANNOUNCE
--- Format: DA|senderAccountID|pactCode|charName|level|timestamp|
---         zoneName|subZone|mapX|mapY|killerName|killerLevel|killerType|
---         copperAmount|race|class|totalXP|items
+-- Format: DA~senderAccountID~pactCode~charName~level~timestamp~
+--         zoneName~subZone~mapX~mapY~killerName~killerLevel~killerType~
+--         copperAmount~race~class~totalXP~items
 -- ============================================================
 
 function BloodPact_Serialization:SerializeDeathAnnounce(senderID, pactCode, record)
@@ -111,23 +114,20 @@ function BloodPact_Serialization:SerializeDeathAnnounce(senderID, pactCode, reco
         tostring(record.totalXP or 0),
         EncodeItems(record.equippedItems)
     }
-    return table.concat(parts, "|")
+    return table.concat(parts, "~")
 end
 
 function BloodPact_Serialization:DeserializeDeathAnnounce(str)
-    -- Split on pipes
+    -- Split on tildes
     local fields = {}
     local pos = 1
     local len = string.len(str)
     while pos <= len do
-        local nextPipe = string.find(str, "|", pos, true)
-        -- But skip escaped pipes (\\p was already unescaped? No - we split first, then unescape)
-        -- Actually we need to split carefully. Since | in values was escaped to \p,
-        -- all remaining | are real separators.
+        local nextSep = string.find(str, "~", pos, true)
         local part
-        if nextPipe then
-            part = string.sub(str, pos, nextPipe - 1)
-            pos = nextPipe + 1
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
         else
             part = string.sub(str, pos)
             pos = len + 1
@@ -176,31 +176,31 @@ end
 
 -- ============================================================
 -- Message Type: JOIN_REQUEST
--- Format: JR|senderAccountID|pactCode|timestamp
+-- Format: JR~senderAccountID~pactCode~timestamp
 -- ============================================================
 
 function BloodPact_Serialization:SerializeJoinRequest(senderID, pactCode)
-    return "JR|" .. Escape(senderID) .. "|" .. Escape(pactCode) .. "|" .. tostring(time())
+    return "JR~" .. Escape(senderID) .. "~" .. Escape(pactCode) .. "~" .. tostring(time())
 end
 
 function BloodPact_Serialization:DeserializeJoinRequest(str)
-    local t, sender, pact, ts = string.match(str, "^([^|]*)|([^|]*)|([^|]*)|([^|]*)$")
+    local t, sender, pact, ts = string.match(str, "^([^~]*)~([^~]*)~([^~]*)~([^~]*)$")
     if t ~= "JR" then return nil, nil end
     return Unescape(sender), Unescape(pact)
 end
 
 -- ============================================================
 -- Message Type: JOIN_RESPONSE
--- Format: JR2|ownerAccountID|pactCode|pactName|createdTimestamp|newMemberAccountID
+-- Format: JR2~ownerAccountID~pactCode~pactName~createdTimestamp~newMemberAccountID
 -- ============================================================
 
 function BloodPact_Serialization:SerializeJoinResponse(ownerID, pactCode, pactName, createdTimestamp, newMemberID)
-    return "JR2|" .. Escape(ownerID) .. "|" .. Escape(pactCode) .. "|" ..
-           Escape(pactName) .. "|" .. tostring(createdTimestamp) .. "|" .. Escape(newMemberID)
+    return "JR2~" .. Escape(ownerID) .. "~" .. Escape(pactCode) .. "~" ..
+           Escape(pactName) .. "~" .. tostring(createdTimestamp) .. "~" .. Escape(newMemberID)
 end
 
 function BloodPact_Serialization:DeserializeJoinResponse(str)
-    local t, owner, pact, name, ts, newMember = string.match(str, "^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)$")
+    local t, owner, pact, name, ts, newMember = string.match(str, "^([^~]*)~([^~]*)~([^~]*)~([^~]*)~([^~]*)~([^~]*)$")
     if t ~= "JR2" then return nil end
     return {
         ownerAccountID   = Unescape(owner),
@@ -213,16 +213,16 @@ end
 
 -- ============================================================
 -- Message Type: OWNERSHIP_TRANSFER
--- Format: OT|pactCode|oldOwnerID|newOwnerID|timestamp
+-- Format: OT~pactCode~oldOwnerID~newOwnerID~timestamp
 -- ============================================================
 
 function BloodPact_Serialization:SerializeOwnershipTransfer(pactCode, oldOwnerID, newOwnerID)
-    return "OT|" .. Escape(pactCode) .. "|" .. Escape(oldOwnerID) .. "|" ..
-           Escape(newOwnerID) .. "|" .. tostring(time())
+    return "OT~" .. Escape(pactCode) .. "~" .. Escape(oldOwnerID) .. "~" ..
+           Escape(newOwnerID) .. "~" .. tostring(time())
 end
 
 function BloodPact_Serialization:DeserializeOwnershipTransfer(str)
-    local t, pact, old, new, ts = string.match(str, "^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)$")
+    local t, pact, old, new, ts = string.match(str, "^([^~]*)~([^~]*)~([^~]*)~([^~]*)~([^~]*)$")
     if t ~= "OT" then return nil end
     return {
         pactCode     = Unescape(pact),
@@ -234,42 +234,42 @@ end
 
 -- ============================================================
 -- Message Type: SYNC_REQUEST
--- Format: SR|senderAccountID|pactCode|timestamp
+-- Format: SR~senderAccountID~pactCode~timestamp
 -- ============================================================
 
 function BloodPact_Serialization:SerializeSyncRequest(senderID, pactCode)
-    return "SR|" .. Escape(senderID) .. "|" .. Escape(pactCode) .. "|" .. tostring(time())
+    return "SR~" .. Escape(senderID) .. "~" .. Escape(pactCode) .. "~" .. tostring(time())
 end
 
 function BloodPact_Serialization:DeserializeSyncRequest(str)
-    local t, sender, pact, ts = string.match(str, "^([^|]*)|([^|]*)|([^|]*)|([^|]*)$")
+    local t, sender, pact, ts = string.match(str, "^([^~]*)~([^~]*)~([^~]*)~([^~]*)$")
     if t ~= "SR" then return nil, nil end
     return Unescape(sender), Unescape(pact)
 end
 
 -- ============================================================
 -- Message Type: CHUNK (for bulk data transfers)
--- Format: CK|senderAccountID|pactCode|msgID|chunkIdx|totalChunks|payload
+-- Format: CK~senderAccountID~pactCode~msgID~chunkIdx~totalChunks~payload
 -- ============================================================
 
 function BloodPact_Serialization:SerializeChunk(senderID, pactCode, msgID, chunkIdx, totalChunks, payload)
-    return "CK|" .. Escape(senderID) .. "|" .. Escape(pactCode) .. "|" ..
-           tostring(msgID) .. "|" .. tostring(chunkIdx) .. "|" ..
-           tostring(totalChunks) .. "|" .. tostring(payload)
+    return "CK~" .. Escape(senderID) .. "~" .. Escape(pactCode) .. "~" ..
+           tostring(msgID) .. "~" .. tostring(chunkIdx) .. "~" ..
+           tostring(totalChunks) .. "~" .. tostring(payload)
 end
 
 function BloodPact_Serialization:DeserializeChunk(str)
-    -- Split manually since payload may contain pipes
+    -- Split manually since payload may contain tildes
     local fields = {}
     local pos = 1
     local len = string.len(str)
     local fieldCount = 0
     while pos <= len and fieldCount < 6 do
-        local nextPipe = string.find(str, "|", pos, true)
+        local nextSep = string.find(str, "~", pos, true)
         local part
-        if nextPipe then
-            part = string.sub(str, pos, nextPipe - 1)
-            pos = nextPipe + 1
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
         else
             part = string.sub(str, pos)
             pos = len + 1
@@ -297,6 +297,6 @@ end
 
 function BloodPact_Serialization:GetMessageType(str)
     if not str then return nil end
-    local msgType = string.match(str, "^([^|]*)")
+    local msgType = string.match(str, "^([^~]*)")
     return msgType
 end

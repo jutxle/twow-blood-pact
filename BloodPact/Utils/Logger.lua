@@ -33,29 +33,41 @@ BloodPact_Logger.LEVEL = {
 -- Default: show warnings and errors only
 BloodPact_Logger.currentLevel = BloodPact_Logger.LEVEL.WARNING
 
+-- Safe wrapper for AddMessage - catches invalid escape code errors
+local function SafeAddMessage(text)
+    local ok, err = pcall(function()
+        DEFAULT_CHAT_FRAME:AddMessage(text)
+    end)
+    if not ok then
+        -- Strip all pipe characters and retry
+        local safe = string.gsub(text, "|", "")
+        DEFAULT_CHAT_FRAME:AddMessage("[BP-ESCAPED] " .. safe .. " (original error: " .. tostring(err) .. ")")
+    end
+end
+
 function BloodPact_Logger:SetLevel(level)
     self.currentLevel = level
 end
 
 function BloodPact_Logger:Info(msg)
     if self.currentLevel <= self.LEVEL.INFO then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00[BloodPact]|r " .. tostring(msg))
+        SafeAddMessage("[BloodPact] " .. tostring(msg))
     end
 end
 
 function BloodPact_Logger:Warning(msg)
     if self.currentLevel <= self.LEVEL.WARNING then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFFAA00[BloodPact]|r " .. tostring(msg))
+        SafeAddMessage("[BloodPact] WARNING: " .. tostring(msg))
     end
 end
 
 function BloodPact_Logger:Error(msg)
     if self.currentLevel <= self.LEVEL.ERROR then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[BloodPact]|r " .. tostring(msg))
+        SafeAddMessage("[BloodPact] ERROR: " .. tostring(msg))
     end
 end
 
 -- Always shown regardless of log level
 function BloodPact_Logger:Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFF6600[BloodPact]|r " .. tostring(msg))
+    SafeAddMessage("[BloodPact] " .. tostring(msg))
 end

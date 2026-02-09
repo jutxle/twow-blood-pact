@@ -132,18 +132,19 @@ function BloodPact_SyncEngine:SendOnAllChannels(msg)
 
     local sent = false
 
+    -- Wrap SendAddonMessage with pcall as safety net against Hooks.lua validation
     if IsInGuild and IsInGuild() then
-        SendAddonMessage(BLOODPACT_ADDON_PREFIX, msg, "GUILD")
-        sent = true
+        local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "GUILD")
+        if ok then sent = true end
     end
 
     local numRaid = GetNumRaidMembers and GetNumRaidMembers() or 0
     if numRaid > 0 then
-        SendAddonMessage(BLOODPACT_ADDON_PREFIX, msg, "RAID")
-        sent = true
+        local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "RAID")
+        if ok then sent = true end
     elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
-        SendAddonMessage(BLOODPACT_ADDON_PREFIX, msg, "PARTY")
-        sent = true
+        local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "PARTY")
+        if ok then sent = true end
     end
 
     if not sent then

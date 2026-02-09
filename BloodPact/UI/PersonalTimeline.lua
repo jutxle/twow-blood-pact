@@ -203,19 +203,19 @@ function BloodPact_PersonalTimeline:CreateDeathRow(parent, death, yOffset)
     deathLabel:SetTextColor(1.0, 0.2, 0.2, 1)
 
     -- Main death info
-    local killer = death.killerName or "Unknown"
+    local killer = BP_SanitizeText(death.killerName) or "Unknown"
     if death.killerLevel and death.killerLevel > 0 then
         killer = killer .. " (" .. tostring(death.killerLevel) .. ")"
     end
     local mainText = BP_CreateFontString(row, BP_FONT_SIZE_MEDIUM)
-    mainText:SetText((death.characterName or "?") .. " (Lvl " .. tostring(death.level or 0) .. ") killed by " .. killer)
+    mainText:SetText(BP_SanitizeText(death.characterName or "?") .. " (Lvl " .. tostring(death.level or 0) .. ") killed by " .. killer)
     mainText:SetPoint("TOPLEFT", ts, "BOTTOMLEFT", 0, -4)
     mainText:SetTextColor(1, 1, 1, 1)
 
     -- Location
-    local locStr = death.zoneName or "Unknown"
+    local locStr = BP_SanitizeText(death.zoneName) or "Unknown"
     if death.subZoneName and string.len(death.subZoneName) > 0 then
-        locStr = locStr .. " (" .. death.subZoneName .. ")"
+        locStr = locStr .. " (" .. BP_SanitizeText(death.subZoneName) .. ")"
     end
     local locText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
     locText:SetText("Location: " .. locStr)
@@ -278,7 +278,7 @@ function BloodPact_PersonalTimeline:CreateDetailsExpansion(parent, death)
 
         for i, item in ipairs(death.equippedItems) do
             local itemLine = BP_CreateFontString(detail, BP_FONT_SIZE_SMALL)
-            itemLine:SetText("  • " .. (item.itemName or "?") .. " (" .. (item.slot or "?") .. ")")
+            itemLine:SetText("  - " .. BP_SanitizeText(item.itemName or "?") .. " (" .. BP_SanitizeText(item.slot or "?") .. ")")
             itemLine:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, -(i * 16))
             local r, g, b = BP_GetQualityColor(item.itemQuality)
             itemLine:SetTextColor(r, g, b, 1)

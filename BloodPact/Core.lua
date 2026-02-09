@@ -66,8 +66,12 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
-        -- Fired on login and zone changes
-        -- Nothing special needed here; login sync is handled in VARIABLES_LOADED
+        -- Track current character level on login/zone change
+        BloodPact_UpdateCharacterLevel()
+
+    elseif event == "PLAYER_LEVEL_UP" then
+        -- a1 = new level
+        BloodPact_UpdateCharacterLevel()
     end
 end
 
@@ -133,6 +137,7 @@ BloodPactFrame:RegisterEvent("VARIABLES_LOADED")
 BloodPactFrame:RegisterEvent("PLAYER_LOGOUT")
 BloodPactFrame:RegisterEvent("PLAYER_DEAD")
 BloodPactFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+BloodPactFrame:RegisterEvent("PLAYER_LEVEL_UP")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
@@ -163,4 +168,33 @@ end
 function BloodPact_CancelJoinTimeout()
     BP_JoinTimeoutActive = false
     BP_Timers.joinTimeout = 0
+end
+
+-- Update the current character's level in the characters tracking table
+function BloodPact_UpdateCharacterLevel()
+    if not BloodPactAccountDB then return end
+    if not BloodPactAccountDB.characters then
+        BloodPactAccountDB.characters = {}
+    end
+
+    local charName = UnitName("player")
+    local level = UnitLevel("player")
+    if not charName or not level then return end
+
+    BloodPactAccountDB.characters[charName] = {
+        level = level,
+        lastSeen = time()
+    }
+
+    -- Also update pact member highestLevel if we're in a pact
+    if BloodPact_PactManager:IsInPact() then
+        local selfID = BloodPact_AccountIdentity:GetAccountID()
+        local members = BloodPactAccountDB.pact.members
+        if members and members[selfID] then
+            local highest = BloodPact_DeathDataManager:GetHighestLevel()
+            if highest > (members[selfID].highestLevel or 0) then
+                members[selfID].highestLevel = highest
+            end
+        end
+    end
 end
