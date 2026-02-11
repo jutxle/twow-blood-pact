@@ -130,7 +130,17 @@ end
 
 -- Called by SyncEngine when a JOIN_RESPONSE message is received
 function BloodPact_PactManager:OnJoinResponse(data)
-    -- Only process if we have a pending join for this code
+    -- Existing pact member: when we receive JR2 for our pact, add the new member to our roster.
+    -- This fixes non-owner members not seeing new joiners (they previously only learned via roster snapshots).
+    if self:IsInPact() and BloodPactAccountDB.pact.joinCode == data.pactCode and data.newMemberID then
+        self:AddMember(data.newMemberID)
+        if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+            BloodPact_MainFrame:Refresh()
+        end
+        return
+    end
+
+    -- Only process if we have a pending join for this code (joiner)
     if BloodPact_PactManager._pendingJoinCode ~= data.pactCode then return end
     if self:IsInPact() then return end  -- already joined (maybe duplicate response)
 

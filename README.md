@@ -53,6 +53,7 @@ This copies `BloodPact/` directly to `C:\Users\<you>\Games\TurtleWoW\Interface\A
 | `/bloodpact toggle` | Toggle window visibility |
 | `/bloodpact create <name>` | Create a new Blood Pact with the given name |
 | `/bloodpact join <code>` | Join a Blood Pact using an 8-character code |
+| `/bloodpact sync` | Manually sync with pact members (if roster is missing) |
 | `/bloodpact wipe` | Show wipe confirmation prompt |
 | `/bloodpact wipe confirm` | Permanently delete all death records (account ID and pact membership are preserved) |
 | `/bloodpact help` | Show command list |

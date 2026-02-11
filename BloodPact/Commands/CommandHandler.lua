@@ -41,6 +41,8 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleSetMain()
     elseif input == "status" then
         self:ShowStatus()
+    elseif input == "sync" then
+        self:HandleSync()
     elseif string.sub(input, 1, 8) == "setname " then
         local name = string.sub(rawInput, 9)
         self:HandleSetName(name)
@@ -186,6 +188,22 @@ function BloodPact_CommandHandler:HandleSetName(name)
     end
 end
 
+function BloodPact_CommandHandler:HandleSync()
+    if not BloodPact_PactManager:IsInPact() then
+        BloodPact_Logger:Print("You are not in a Blood Pact. Nothing to sync.")
+        return
+    end
+    BloodPact_Logger:Print("Requesting full sync with pact members...")
+    BloodPact_SyncEngine:SendSyncRequest()
+    BloodPact_SyncEngine:BroadcastAllDeaths()
+    BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
+    BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+    BloodPact_Logger:Print("Sync request sent. Other members will respond shortly.")
+end
+
 function BloodPact_CommandHandler:ShowStatus()
     BloodPact_Logger:Print("=== Blood Pact Status ===")
     local displayName = BloodPact_AccountIdentity:GetDisplayName() or "None"
@@ -214,6 +232,7 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact toggle   - Toggle window visibility")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact create <name> - Create a new Blood Pact")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact join <code> - Join a Blood Pact using a join code")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact sync       - Manually sync with pact members (if roster is missing)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact setmain  - Set current character as main hardcore (for roster)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp setname <name> - Set your display name (shown in pact UI)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact wipe     - Wipe all death data (requires confirmation)")

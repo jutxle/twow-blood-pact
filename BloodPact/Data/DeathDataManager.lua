@@ -34,6 +34,11 @@ function BloodPact_DeathDataManager:RecordDeath(deathRecord)
     -- Add the death record
     table.insert(BloodPactAccountDB.deaths[charName], deathRecord)
 
+    -- Remove from living characters; dead characters must not appear as ALIVE
+    if BloodPactAccountDB.characters and BloodPactAccountDB.characters[charName] then
+        BloodPactAccountDB.characters[charName] = nil
+    end
+
     -- Enforce size limit
     self:EnforceSizeLimit(charName)
 
