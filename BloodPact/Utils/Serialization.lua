@@ -88,7 +88,7 @@ end
 
 -- ============================================================
 -- Message Type: DEATH_ANNOUNCE
--- Format: DA~senderAccountID~pactCode~charName~level~timestamp~
+-- Format: DA~senderAccountID~pactCode~charName~charInstanceID~level~timestamp~
 --         zoneName~subZone~mapX~mapY~killerName~killerLevel~killerType~
 --         copperAmount~race~class~totalXP~items
 -- ============================================================
@@ -99,6 +99,7 @@ function BloodPact_Serialization:SerializeDeathAnnounce(senderID, pactCode, reco
         Escape(senderID),
         Escape(pactCode),
         Escape(record.characterName),
+        Escape(record.characterInstanceID or ""),
         tostring(record.level or 0),
         tostring(record.timestamp or 0),
         Escape(record.zoneName or ""),
@@ -147,21 +148,30 @@ function BloodPact_Serialization:DeserializeDeathAnnounce(str)
 
     local record = {}
     record.characterName = Unescape(fields[4])
-    record.level         = tonumber(fields[5]) or 0
-    record.timestamp     = tonumber(fields[6]) or 0
+    -- characterInstanceID: new in v2 format (19 fields); old format (18) lacks it
+    local levelIdx = 5
+    if table.getn(fields) >= 19 then
+        record.characterInstanceID = Unescape(fields[5])
+        if record.characterInstanceID == "" then record.characterInstanceID = nil end
+        levelIdx = 6
+    else
+        record.characterInstanceID = nil
+    end
+    record.level         = tonumber(fields[levelIdx]) or 0
+    record.timestamp     = tonumber(fields[levelIdx + 1]) or 0
     record.serverTime    = date("%Y-%m-%d %H:%M:%S", record.timestamp)
-    record.zoneName      = Unescape(fields[7])
-    record.subZoneName   = Unescape(fields[8])
-    record.mapX          = tonumber(fields[9]) or 0
-    record.mapY          = tonumber(fields[10]) or 0
-    record.killerName    = Unescape(fields[11])
-    record.killerLevel   = tonumber(fields[12]) or 0
-    record.killerType    = Unescape(fields[13])
-    record.copperAmount  = tonumber(fields[14]) or 0
-    record.race          = Unescape(fields[15])
-    record.class         = Unescape(fields[16])
-    record.totalXP       = tonumber(fields[17]) or 0
-    record.equippedItems = DecodeItems(fields[18])
+    record.zoneName      = Unescape(fields[levelIdx + 2])
+    record.subZoneName   = Unescape(fields[levelIdx + 3])
+    record.mapX          = tonumber(fields[levelIdx + 4]) or 0
+    record.mapY          = tonumber(fields[levelIdx + 5]) or 0
+    record.killerName    = Unescape(fields[levelIdx + 6])
+    record.killerLevel   = tonumber(fields[levelIdx + 7]) or 0
+    record.killerType    = Unescape(fields[levelIdx + 8])
+    record.copperAmount  = tonumber(fields[levelIdx + 9]) or 0
+    record.race          = Unescape(fields[levelIdx + 10])
+    record.class         = Unescape(fields[levelIdx + 11])
+    record.totalXP       = tonumber(fields[levelIdx + 12]) or 0
+    record.equippedItems = DecodeItems(fields[levelIdx + 13] or "")
     record.version       = BLOODPACT_SCHEMA_VERSION
     record.accountID     = senderID
 

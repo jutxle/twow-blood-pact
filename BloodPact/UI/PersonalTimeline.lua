@@ -5,9 +5,9 @@ BloodPact_PersonalTimeline = {}
 
 local panel = nil
 local eventRows = {}
-local currentFilter = nil  -- nil = all characters
+local currentFilter = nil  -- nil = all characters; else { charName, characterInstanceID }
 local currentSort = "newest"
-local expandedDeaths = {}   -- keys = "charName_timestamp", tracks which details are open
+local expandedDeaths = {}   -- keys = "charName_instanceID_timestamp", tracks which details are open
 
 -- ============================================================
 -- Construction
@@ -95,14 +95,21 @@ function BloodPact_PersonalTimeline:CycleFilter()
     if table.getn(summaries) == 0 then return end
 
     if currentFilter == nil then
-        currentFilter = summaries[1].characterName
+        currentFilter = {
+            charName = summaries[1].characterName,
+            characterInstanceID = summaries[1].characterInstanceID
+        }
     else
-        -- Find next character
+        -- Find next character instance
         local found = false
         for i, s in ipairs(summaries) do
-            if s.characterName == currentFilter then
+            if s.characterName == currentFilter.charName and
+               (s.characterInstanceID or "") == (currentFilter.characterInstanceID or "") then
                 if i < table.getn(summaries) then
-                    currentFilter = summaries[i + 1].characterName
+                    currentFilter = {
+                        charName = summaries[i + 1].characterName,
+                        characterInstanceID = summaries[i + 1].characterInstanceID
+                    }
                 else
                     currentFilter = nil  -- wrap back to "all"
                 end
@@ -130,8 +137,11 @@ function BloodPact_PersonalTimeline:Show()
     self:Refresh()
 end
 
-function BloodPact_PersonalTimeline:ShowForCharacter(charName)
-    currentFilter = charName
+function BloodPact_PersonalTimeline:ShowForCharacter(charName, characterInstanceID)
+    currentFilter = charName and {
+        charName = charName,
+        characterInstanceID = characterInstanceID
+    } or nil
     self:Show()
 end
 
@@ -148,7 +158,22 @@ function BloodPact_PersonalTimeline:Refresh()
 
     -- Update filter label
     if panel.filterText then
-        panel.filterText:SetText(currentFilter or "All Characters")
+        if currentFilter then
+            local summaries = BloodPact_DeathDataManager:GetCharacterSummaries()
+            local nameCounts = {}
+            for _, s in ipairs(summaries) do
+                local n = s.characterName or "?"
+                nameCounts[n] = (nameCounts[n] or 0) + 1
+                if s.characterName == currentFilter.charName and
+                   (s.characterInstanceID or "") == (currentFilter.characterInstanceID or "") then
+                    local disp = (nameCounts[n] > 1) and (n .. " #" .. tostring(nameCounts[n])) or n
+                    panel.filterText:SetText(disp)
+                    break
+                end
+            end
+        else
+            panel.filterText:SetText("All Characters")
+        end
     end
 
     -- Clear existing rows
@@ -161,7 +186,7 @@ function BloodPact_PersonalTimeline:Refresh()
     -- Get deaths
     local deaths
     if currentFilter then
-        deaths = BloodPact_DeathDataManager:GetDeaths(currentFilter)
+        deaths = BloodPact_DeathDataManager:GetDeaths(currentFilter.charName, currentFilter.characterInstanceID)
     else
         deaths = BloodPact_DeathDataManager:GetDeaths(nil)
     end
@@ -232,7 +257,7 @@ function BloodPact_PersonalTimeline:CreateDeathRow(parent, death, yOffset)
     lostText:SetTextColor(1.0, 0.84, 0.0, 1)
 
     -- View/hide details button
-    local deathKey = tostring(death.characterName or "?") .. "_" .. tostring(death.timestamp or 0)
+    local deathKey = tostring(death.characterName or "?") .. "_" .. tostring(death.characterInstanceID or "?") .. "_" .. tostring(death.timestamp or 0)
     local isExpanded = expandedDeaths[deathKey]
     local detailsBtn = BP_CreateButton(row, isExpanded and "Close" or "Details", 60, 16)
     detailsBtn:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 8, 4)

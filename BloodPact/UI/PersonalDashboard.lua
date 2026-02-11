@@ -181,6 +181,14 @@ function BloodPact_PersonalDashboard:RefreshCharacterList()
     local rowHeight = 24
     local yOffset = 0
 
+    -- Compute display names for multiple instances of same character (e.g. "Bob", "Bob #2")
+    local nameCounts = {}
+    for i, summary in ipairs(summaries) do
+        local n = summary.characterName or "?"
+        nameCounts[n] = (nameCounts[n] or 0) + 1
+        summary.displayName = (nameCounts[n] > 1) and (n .. " #" .. tostring(nameCounts[n])) or n
+    end
+
     for i, summary in ipairs(summaries) do
         local row = self:CreateCharRow(panel.charScrollChild, summary, yOffset)
         table.insert(charRows, row)
@@ -197,9 +205,9 @@ function BloodPact_PersonalDashboard:CreateCharRow(parent, summary, yOffset)
     row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
     row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, yOffset)
 
-    -- Character name
+    -- Character name (with #2, #3 suffix when multiple instances of same name)
     local nameText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    nameText:SetText(summary.characterName)
+    nameText:SetText(summary.displayName or summary.characterName)
     nameText:SetPoint("LEFT", row, "LEFT", 4, 0)
 
     -- Highest level
@@ -223,8 +231,9 @@ function BloodPact_PersonalDashboard:CreateCharRow(parent, summary, yOffset)
     local viewBtn = BP_CreateButton(row, "Timeline", 70, 18)
     viewBtn:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     local charName = summary.characterName
+    local instanceID = summary.characterInstanceID
     viewBtn:SetScript("OnClick", function()
-        BloodPact_PersonalTimeline:ShowForCharacter(charName)
+        BloodPact_PersonalTimeline:ShowForCharacter(charName, instanceID)
     end)
 
     return row

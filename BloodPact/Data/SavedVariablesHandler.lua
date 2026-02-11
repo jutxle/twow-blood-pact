@@ -65,6 +65,12 @@ function BloodPact_SavedVariablesHandler:ValidateData()
                        not death.level then
                         BloodPact_Logger:Warning("Removed corrupted death record for '" .. tostring(charName) .. "'.")
                         table.remove(deathList, i)
+                    else
+                        -- Backfill characterInstanceID for legacy records (same-name char support)
+                        if not death.characterInstanceID and BloodPact_CharacterIdentity then
+                            death.characterInstanceID = "legacy_" .. tostring(death.timestamp or 0) .. "_" ..
+                                string.format("%04d", math.random(1000, 9999))
+                        end
                     end
                     i = i - 1
                 end

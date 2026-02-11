@@ -246,9 +246,10 @@ function BloodPact_PactDashboard:CreateMemberRow(parent, accountID, member, yOff
         levelText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
     end
 
-    -- Death count
+    -- Death count (from actual stored data, not member.deathCount)
+    local deathCount = BloodPact_DeathDataManager:GetDeathCountForMember(accountID)
     local deathText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    deathText:SetText("(" .. tostring(member.deathCount or 0) .. " deaths)")
+    deathText:SetText("(" .. tostring(deathCount) .. " deaths)")
     deathText:SetPoint("LEFT", row, "LEFT", 210, 0)
     deathText:SetTextColor(0.8, 0.3, 0.3, 1)
 

@@ -4,10 +4,11 @@
 BloodPact_ConflictResolver = {}
 
 -- Determine if two death records represent the same death event
--- Criteria: same character, timestamps within 10s, same level
+-- Criteria: same character instance, timestamps within 10s, same level
 function BloodPact_ConflictResolver:IsSameDeath(d1, d2)
     if not d1 or not d2 then return false end
     if d1.characterName ~= d2.characterName then return false end
+    if (d1.characterInstanceID or "") ~= (d2.characterInstanceID or "") then return false end
     if math.abs((d1.timestamp or 0) - (d2.timestamp or 0)) > 10 then return false end
     if d1.level ~= d2.level then return false end
     return true

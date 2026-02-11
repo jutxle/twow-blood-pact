@@ -18,6 +18,11 @@ function BloodPact_DeathDataManager:RecordDeath(deathRecord)
         return false
     end
 
+    -- Assign unique character instance ID (distinguishes same-name chars after delete/recreate)
+    if not deathRecord.characterInstanceID then
+        deathRecord.characterInstanceID = BloodPact_CharacterIdentity:GenerateInstanceID()
+    end
+
     -- Ensure deaths table exists
     if not BloodPactAccountDB.deaths then
         BloodPactAccountDB.deaths = {}
@@ -54,13 +59,34 @@ function BloodPact_DeathDataManager:EnforceSizeLimit(charName)
 end
 
 -- Get all deaths for a specific character (nil = all characters)
-function BloodPact_DeathDataManager:GetDeaths(charName)
+-- characterInstanceID: optional filter to deaths from a specific instance only
+function BloodPact_DeathDataManager:GetDeaths(charName, characterInstanceID)
     if not BloodPactAccountDB or not BloodPactAccountDB.deaths then
         return {}
     end
 
     if charName then
-        return BloodPactAccountDB.deaths[charName] or {}
+        local deathList = BloodPactAccountDB.deaths[charName] or {}
+        if characterInstanceID then
+            local filtered = {}
+            for _, death in ipairs(deathList) do
+                if death.characterInstanceID == characterInstanceID then
+                    table.insert(filtered, death)
+                end
+            end
+            table.sort(filtered, function(a, b)
+                return a.timestamp > b.timestamp
+            end)
+            return filtered
+        end
+        local sorted = {}
+        for _, death in ipairs(deathList) do
+            table.insert(sorted, death)
+        end
+        table.sort(sorted, function(a, b)
+            return a.timestamp > b.timestamp
+        end)
+        return sorted
     end
 
     -- Return all deaths across all characters
@@ -144,50 +170,67 @@ function BloodPact_DeathDataManager:GetTotalXPLost()
     return total
 end
 
--- Get list of character names with their highest level and death count
+-- Get list of character instances with their highest level and death count.
+-- Groups by characterInstanceID so "Bob" (deleted) and "Bob" (recreated) appear separately.
 function BloodPact_DeathDataManager:GetCharacterSummaries()
     if not BloodPactAccountDB then return {} end
 
-    local charMap = {}  -- charName -> { highestLevel, deathCount }
+    -- instanceKey -> { characterName, characterInstanceID, highestLevel, deathCount }
+    -- instanceKey = characterInstanceID or (charName .. "_living") for chars with no deaths
+    local instanceMap = {}
 
-    -- Gather from death records
+    -- Gather from death records, grouped by characterInstanceID
     if BloodPactAccountDB.deaths then
         for charName, deathList in pairs(BloodPactAccountDB.deaths) do
-            local highestLevel = 0
-            for _, death in ipairs(deathList) do
-                if death.level and death.level > highestLevel then
-                    highestLevel = death.level
+            -- Group deaths by instance ID (each instance may have multiple deaths)
+            local instanceGroups = {}
+            for i, death in ipairs(deathList) do
+                local instID = death.characterInstanceID or ("legacy_" .. tostring(death.timestamp or 0) .. "_" .. tostring(death.level or 0) .. "_" .. tostring(i))
+                if not instanceGroups[instID] then
+                    instanceGroups[instID] = { highestLevel = 0, deathCount = 0 }
+                end
+                local g = instanceGroups[instID]
+                g.deathCount = g.deathCount + 1
+                if death.level and death.level > g.highestLevel then
+                    g.highestLevel = death.level
                 end
             end
-            charMap[charName] = {
-                highestLevel = highestLevel,
-                deathCount   = table.getn(deathList)
-            }
+            for instID, data in pairs(instanceGroups) do
+                instanceMap[instID] = {
+                    characterName       = charName,
+                    characterInstanceID = instID,
+                    highestLevel        = data.highestLevel,
+                    deathCount          = data.deathCount
+                }
+            end
         end
     end
 
-    -- Merge in living character data (may have higher levels, or no deaths at all)
+    -- Add living characters (no deaths yet; "living" sentinel means no deaths to show)
     if BloodPactAccountDB.characters then
         for charName, charData in pairs(BloodPactAccountDB.characters) do
-            if not charMap[charName] then
-                charMap[charName] = { highestLevel = 0, deathCount = 0 }
-            end
-            if charData.level and charData.level > charMap[charName].highestLevel then
-                charMap[charName].highestLevel = charData.level
+            local livingKey = charName .. "_living"
+            if not instanceMap[livingKey] then
+                instanceMap[livingKey] = {
+                    characterName       = charName,
+                    characterInstanceID = "living",
+                    highestLevel        = charData.level or 0,
+                    deathCount          = 0
+                }
             end
         end
     end
 
-    -- Convert to array
+    -- Convert to array, sort by highest level descending
     local summaries = {}
-    for charName, data in pairs(charMap) do
+    for _, data in pairs(instanceMap) do
         table.insert(summaries, {
-            characterName = charName,
-            deathCount    = data.deathCount,
-            highestLevel  = data.highestLevel
+            characterName       = data.characterName,
+            characterInstanceID = data.characterInstanceID,
+            deathCount          = data.deathCount,
+            highestLevel        = data.highestLevel
         })
     end
-    -- Sort by highest level descending
     table.sort(summaries, function(a, b)
         return a.highestLevel > b.highestLevel
     end)
@@ -209,6 +252,11 @@ function BloodPact_DeathDataManager:StoreSyncedDeath(memberAccountID, deathRecor
         BloodPactAccountDB.pact.syncedDeaths = {}
     end
 
+    -- Backfill characterInstanceID for legacy/incoming records that lack it
+    if not deathRecord.characterInstanceID and BloodPact_CharacterIdentity then
+        deathRecord.characterInstanceID = BloodPact_CharacterIdentity:GenerateInstanceID()
+    end
+
     local syncedDeaths = BloodPactAccountDB.pact.syncedDeaths
     if not syncedDeaths[memberAccountID] then
         syncedDeaths[memberAccountID] = {}
@@ -219,10 +267,11 @@ function BloodPact_DeathDataManager:StoreSyncedDeath(memberAccountID, deathRecor
         syncedDeaths[memberAccountID][charName] = {}
     end
 
-    -- Check for duplicate (same character, timestamp within 10s, same level)
+    -- Check for duplicate (same instance + timestamp within 10s + same level)
     local charDeaths = syncedDeaths[memberAccountID][charName]
     for _, existing in ipairs(charDeaths) do
-        if math.abs(existing.timestamp - deathRecord.timestamp) <= 10 and
+        if (existing.characterInstanceID == deathRecord.characterInstanceID) and
+           math.abs(existing.timestamp - deathRecord.timestamp) <= 10 and
            existing.level == deathRecord.level then
             -- Already have this death
             return false
@@ -271,6 +320,30 @@ function BloodPact_DeathDataManager:GetAllPactDeaths()
         return a.timestamp > b.timestamp
     end)
     return allDeaths
+end
+
+-- Get death count for a specific pact member (by account ID).
+-- Uses actual stored data (own deaths or syncedDeaths) rather than member.deathCount.
+function BloodPact_DeathDataManager:GetDeathCountForMember(accountID)
+    if not BloodPactAccountDB then return 0 end
+
+    local ownID = BloodPact_AccountIdentity:GetAccountID()
+    if accountID == ownID then
+        return self:GetTotalDeaths()
+    end
+
+    if not BloodPactAccountDB.pact or not BloodPactAccountDB.pact.syncedDeaths then
+        return 0
+    end
+
+    local charMap = BloodPactAccountDB.pact.syncedDeaths[accountID]
+    if not charMap then return 0 end
+
+    local count = 0
+    for _, deathList in pairs(charMap) do
+        count = count + table.getn(deathList)
+    end
+    return count
 end
 
 -- Convert copper amount to display string "Xg Ys Zc"

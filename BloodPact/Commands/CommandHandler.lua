@@ -287,8 +287,9 @@ function BloodPact_CommandHandler:HandleSimDeath(rest)
 
     -- Build fake death record
     local deathRecord = {
-        characterName = charName,
-        level         = level,
+        characterName       = charName,
+        characterInstanceID = BloodPact_CharacterIdentity:GenerateInstanceID(),
+        level               = level,
         timestamp     = time() - math.random(0, 300),
         serverTime    = date("%Y-%m-%d %H:%M:%S"),
         zoneName      = zone,
