@@ -29,24 +29,34 @@ function BloodPact_MainFrame:Create()
     frame:SetFrameStrata("DIALOG")
     BP_ApplyBackdrop(frame, true)
 
-    -- Restore saved position
-    if BloodPactAccountDB and BloodPactAccountDB.config then
+    -- Only restore saved position if this character has logged in before.
+    -- New characters start centered so the panel is always visible on first use.
+    local charName = UnitName("player")
+    local isKnownChar = BloodPactAccountDB and BloodPactAccountDB.characters
+        and charName and BloodPactAccountDB.characters[charName]
+
+    if isKnownChar and BloodPactAccountDB.config then
         local x = BloodPactAccountDB.config.windowX
         local y = BloodPactAccountDB.config.windowY
         if x and y then
+            local screenW = UIParent:GetWidth()
+            local screenH = UIParent:GetHeight()
+            if x < 0 then x = 0 end
+            if x > screenW - 100 then x = screenW - 100 end
+            if y < 100 then y = 100 end
+            if y > screenH then y = screenH end
             frame:ClearAllPoints()
             frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
         end
     end
 
-    -- Save position on drag
+    -- Save position on drag (GetLeft/GetTop are already in BOTTOMLEFT coords)
     frame:SetScript("OnDragStart", function() frame:StartMoving() end)
     frame:SetScript("OnDragStop", function()
         frame:StopMovingOrSizing()
         if BloodPactAccountDB and BloodPactAccountDB.config then
-            local x, y = frame:GetLeft(), frame:GetTop()
-            BloodPactAccountDB.config.windowX = x
-            BloodPactAccountDB.config.windowY = y - UIParent:GetHeight()
+            BloodPactAccountDB.config.windowX = frame:GetLeft()
+            BloodPactAccountDB.config.windowY = frame:GetTop()
         end
     end)
 
@@ -77,9 +87,8 @@ function BloodPact_MainFrame:CreateTitleBar()
     titleBar:SetScript("OnDragStop", function()
         frame:StopMovingOrSizing()
         if BloodPactAccountDB and BloodPactAccountDB.config then
-            local x, y = frame:GetLeft(), frame:GetTop()
-            BloodPactAccountDB.config.windowX = x
-            BloodPactAccountDB.config.windowY = y - UIParent:GetHeight()
+            BloodPactAccountDB.config.windowX = frame:GetLeft()
+            BloodPactAccountDB.config.windowY = frame:GetTop()
         end
     end)
 
@@ -275,4 +284,15 @@ end
 
 function BloodPact_MainFrame:GetContentFrame()
     return frame and frame.content
+end
+
+function BloodPact_MainFrame:ResetPosition()
+    if not frame then return end
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    if BloodPactAccountDB and BloodPactAccountDB.config then
+        BloodPactAccountDB.config.windowX = nil
+        BloodPactAccountDB.config.windowY = nil
+    end
+    BloodPact_Logger:Print("Window position reset to center.")
 end

@@ -7,6 +7,7 @@ local panel = nil
 local eventRows = {}
 local currentFilter = nil  -- nil = all characters
 local currentSort = "newest"
+local expandedDeaths = {}   -- keys = "charName_timestamp", tracks which details are open
 
 -- ============================================================
 -- Construction
@@ -231,25 +232,22 @@ function BloodPact_PersonalTimeline:CreateDeathRow(parent, death, yOffset)
     lostText:SetTextColor(1.0, 0.84, 0.0, 1)
 
     -- View/hide details button
-    local detailsShown = false
-    local detailsBtn = BP_CreateButton(row, "Details", 60, 16)
+    local deathKey = tostring(death.characterName or "?") .. "_" .. tostring(death.timestamp or 0)
+    local isExpanded = expandedDeaths[deathKey]
+    local detailsBtn = BP_CreateButton(row, isExpanded and "Close" or "Details", 60, 16)
     detailsBtn:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 8, 4)
 
     local detailFrame = self:CreateDetailsExpansion(row, death)
-    detailFrame:Hide()
+    if isExpanded then
+        detailFrame:Show()
+        row:SetHeight(rowH + detailFrame:GetHeight() + 4)
+    else
+        detailFrame:Hide()
+    end
 
     detailsBtn:SetScript("OnClick", function()
-        detailsShown = not detailsShown
-        if detailsShown then
-            detailsBtn.label:SetText("Close")
-            detailFrame:Show()
-            row:SetHeight(rowH + detailFrame:GetHeight() + 4)
-        else
-            detailsBtn.label:SetText("Details")
-            detailFrame:Hide()
-            row:SetHeight(rowH)
-        end
-        -- Re-layout rows below
+        expandedDeaths[deathKey] = not expandedDeaths[deathKey]
+        -- Re-layout all rows
         BloodPact_PersonalTimeline:Refresh()
     end)
 

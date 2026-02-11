@@ -275,6 +275,17 @@ function BloodPact_SyncEngine:CleanExpiredChunks()
 end
 
 -- ============================================================
+-- Loopback / Testing
+-- ============================================================
+
+-- Inject a raw serialized message as if received from the network.
+-- Bypasses SendAddonMessage entirely, feeding directly into OnAddonMessage.
+-- Used by /bp sim* commands to test the full serialize → deserialize → process pipeline.
+function BloodPact_SyncEngine:InjectMessage(msg, fakeSender)
+    self:OnAddonMessage(msg, "LOOPBACK", fakeSender or "SimPlayer")
+end
+
+-- ============================================================
 -- Utilities
 -- ============================================================
 

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(powershell:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "WebFetch(domain:turtle-wow.fandom.com)"
     ]
   }
 }

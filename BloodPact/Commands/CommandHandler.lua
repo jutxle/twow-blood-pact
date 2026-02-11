@@ -47,13 +47,16 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif input == "nodebug" then
         BloodPact_Logger:SetLevel(BloodPact_Logger.LEVEL.WARNING)
         BloodPact_Logger:Print("Debug logging disabled.")
-    elseif string.sub(input, 1, 8) == "simjoin " then
+    elseif input == "reset" then
+        BloodPact_MainFrame:ResetPosition()
+        BloodPact_MainFrame:Show()
+    elseif input == "simjoin" or string.sub(input, 1, 8) == "simjoin " then
         local accountName = string.sub(rawInput, 9)
         self:HandleSimJoin(accountName)
-    elseif string.sub(input, 1, 9) == "simdeath " then
+    elseif input == "simdeath" or string.sub(input, 1, 9) == "simdeath " then
         local rest = string.sub(rawInput, 10)
         self:HandleSimDeath(rest)
-    elseif string.sub(input, 1, 10) == "simremove " then
+    elseif input == "simremove" or string.sub(input, 1, 10) == "simremove " then
         local accountName = string.sub(rawInput, 11)
         self:HandleSimRemove(accountName)
     else
@@ -179,7 +182,8 @@ function BloodPact_CommandHandler:HandleSimJoin(accountName)
 end
 
 -- /bp simdeath <accountName> [charName] [level] [zone] [killer]
--- All args after accountName are optional with sensible defaults
+-- All args after accountName are optional with sensible defaults.
+-- Routes through the full network pipeline: serialize → inject → deserialize → process.
 function BloodPact_CommandHandler:HandleSimDeath(rest)
     if not rest or string.len(rest) == 0 then
         BloodPact_Logger:Print("Usage: /bp simdeath <accountName> [charName] [level] [zone] [killer]")
@@ -224,12 +228,12 @@ function BloodPact_CommandHandler:HandleSimDeath(rest)
     local deathRecord = {
         characterName = charName,
         level         = level,
-        timestamp     = time() - math.random(0, 300),  -- slight past offset
+        timestamp     = time() - math.random(0, 300),
         serverTime    = date("%Y-%m-%d %H:%M:%S"),
         zoneName      = zone,
         subZoneName   = "",
         killerName    = killer,
-        killerLevel   = math.random(level - 2, level + 5),
+        killerLevel   = math.random(math.max(1, level - 2), level + 5),
         killerType    = "NPC",
         copperAmount  = math.random(100, 50000),
         race          = "Human",
@@ -240,8 +244,12 @@ function BloodPact_CommandHandler:HandleSimDeath(rest)
         accountID     = accountName,
     }
 
-    -- Process through normal pact death path (store + update member stats)
-    BloodPact_PactManager:OnMemberDeath(accountName, deathRecord)
+    -- Serialize as if sending over the network, then inject into receive pipeline
+    local pactCode = BloodPact_PactManager:GetPactCode()
+    local serialized = BloodPact_Serialization:SerializeDeathAnnounce(accountName, pactCode, deathRecord)
+
+    BloodPact_Logger:Print("[SIM] Serialized DA message (" .. string.len(serialized) .. " bytes), injecting into receive pipeline...")
+    BloodPact_SyncEngine:InjectMessage(serialized, accountName)
 
     BloodPact_Logger:Print("[SIM] " .. accountName .. "'s " .. charName ..
         " (Lvl " .. tostring(level) .. ") died to " .. killer .. " in " .. zone)

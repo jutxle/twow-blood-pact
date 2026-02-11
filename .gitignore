@@ -40,3 +40,4 @@ luac.out
 *.hex
 
 deploy.ps1
+nul
