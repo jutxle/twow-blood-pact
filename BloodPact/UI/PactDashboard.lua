@@ -245,9 +245,9 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
 
     BP_ApplyPanelBackdrop(card)
 
-    -- Use display name for UI; fallback: roster character name, then accountID
+    -- Display name (user-facing) and character name (from roster snapshot)
     local displayName = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(accountID) or accountID
-    local charName = displayName
+    local charName = (snapshot and snapshot.characterName and snapshot.characterName ~= "") and snapshot.characterName or accountID
     local class = (snapshot and snapshot.class) or ""
     local level = (snapshot and snapshot.level) or member.highestLevel or 0
     local copper = (snapshot and snapshot.copper) or 0
@@ -257,7 +257,7 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     local prof2Lvl = (snapshot and snapshot.profession2Level) or 0
     local talentTabs = (snapshot and snapshot.talentTabs) or {}
 
-    -- Status icon (alive/deceased)
+    -- Row 1: Status icon + Account Display Name
     local statusIcon = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
     if member.isAlive then
         statusIcon:SetText("✓")
@@ -268,38 +268,35 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     end
     statusIcon:SetPoint("TOPLEFT", card, "TOPLEFT", 6, -6)
 
-    -- Class color for name (WoW class colors)
-    local nameColor = {1, 1, 1}
+    local displayNameText = BP_CreateFontString(card, BP_FONT_SIZE_MEDIUM)
+    displayNameText:SetText(BP_SanitizeText(displayName))
+    displayNameText:SetPoint("LEFT", statusIcon, "RIGHT", 4, 0)
+    displayNameText:SetTextColor(1, 1, 1, 1)
+
+    -- Row 2: Character Name | Class
+    local classColor = {1, 1, 1}
     if BLOODPACT_CLASS_COLORS and class and class ~= "" then
         local c = BLOODPACT_CLASS_COLORS[string.upper(class)]
-        if c then nameColor = c end
+        if c then classColor = c end
     end
+    local charClassText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    local charClassStr = BP_SanitizeText(charName)
+    if class ~= "" then charClassStr = charClassStr .. " | " .. class end
+    charClassText:SetText(charClassStr)
+    charClassText:SetPoint("TOPLEFT", statusIcon, "BOTTOMLEFT", 0, -4)
+    charClassText:SetTextColor(classColor[1], classColor[2], classColor[3], 1)
 
-    -- Character name (with class color)
-    local nameText = BP_CreateFontString(card, BP_FONT_SIZE_MEDIUM)
-    nameText:SetText(BP_SanitizeText(charName))
-    nameText:SetPoint("LEFT", statusIcon, "RIGHT", 4, 0)
-    nameText:SetTextColor(nameColor[1], nameColor[2], nameColor[3], 1)
-
-    -- Class label (in parentheses, smaller)
-    local classText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
-    classText:SetText(class ~= "" and ("(" .. class .. ")") or "")
-    classText:SetPoint("LEFT", nameText, "RIGHT", 4, 0)
-    classText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
-
-    -- Level
+    -- Row 3: Level | Currency
     local levelText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
     levelText:SetText("Lvl " .. tostring(level))
-    levelText:SetPoint("TOPLEFT", statusIcon, "BOTTOMLEFT", 0, -4)
+    levelText:SetPoint("TOPLEFT", charClassText, "BOTTOMLEFT", 0, -4)
     levelText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_PRIMARY))
 
-    -- Gold
     local goldText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
-    goldText:SetText(BloodPact_DeathDataManager:FormatCopper(copper))
-    goldText:SetPoint("LEFT", levelText, "RIGHT", 12, 0)
+    goldText:SetText(" | " .. BloodPact_DeathDataManager:FormatCopper(copper))
+    goldText:SetPoint("LEFT", levelText, "RIGHT", 2, 0)
     goldText:SetTextColor(1.0, 0.84, 0.0, 1)
-
-    -- Professions (show name even if level is 0)
+    -- Row 4: Professions (show name even if level is 0)
     local profStr = ""
     if prof1 ~= "" then
         profStr = prof1 .. " " .. tostring(prof1Lvl)
@@ -315,7 +312,7 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     profText:SetPoint("TOPLEFT", levelText, "BOTTOMLEFT", 0, -4)
     profText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
-    -- Talents (all 3 trees with points spent: "Affliction 5 | Demonology 3 | Destruction 0")
+    -- Row 5: Talents (all 3 trees with points spent: "Affliction 5 | Demonology 3 | Destruction 0")
     local talentParts = {}
     for _, tab in ipairs(talentTabs) do
         local name = tab.name or ""
