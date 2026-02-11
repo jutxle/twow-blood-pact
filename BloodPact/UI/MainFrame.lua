@@ -208,15 +208,17 @@ function BloodPact_MainFrame:SwitchTab(tabIndex)
     activeTab = tabIndex
     self:UpdateTabHighlight()
 
-    -- Hide any open timelines before switching
-    BloodPact_PersonalTimeline:Hide()
-    BloodPact_PactTimeline:Hide()
+    -- Hide any open overlays before switching
+    if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Hide then BloodPact_PersonalTimeline:Hide() end
+    if BloodPact_PactTimeline and BloodPact_PactTimeline.Hide then BloodPact_PactTimeline:Hide() end
+    if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Hide then BloodPact_DungeonDetailOverlay:Hide() end
 
-    -- Show/hide panels
+    -- Show/hide panels (ensure active panel is raised for draw order)
     for i, panel in pairs(tabPanels) do
         if panel and panel.Hide then
             if i == tabIndex then
                 panel:Show()
+                panel:Raise()
                 if panel.Refresh then panel:Refresh() end
             else
                 panel:Hide()

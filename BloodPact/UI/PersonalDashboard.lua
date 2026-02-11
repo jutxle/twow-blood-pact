@@ -14,6 +14,7 @@ function BloodPact_PersonalDashboard:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    panel:SetFrameLevel(0)
     panel:Hide()
 
     self:CreateStatCards()

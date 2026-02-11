@@ -14,6 +14,7 @@ function BloodPact_PactDashboard:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    panel:SetFrameLevel(0)
     panel:Hide()
 
     self:CreatePactHeader()
@@ -232,7 +233,7 @@ function BloodPact_PactDashboard:RefreshRosterCards()
 end
 
 function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, snapshot, col, row, cardW, cardH, padX, padY)
-    local card = CreateFrame("Frame", nil, parent)
+    local card = CreateFrame("Button", nil, parent)
     card:SetWidth(cardW)
     card:SetHeight(cardH)
     card:SetPoint("TOPLEFT", parent, "TOPLEFT",
@@ -330,6 +331,28 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     deathText:SetText(tostring(deathCount) .. " death(s)")
     deathText:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -6, 6)
     deathText:SetTextColor(0.8, 0.3, 0.3, 1)
+
+    -- "Click for dungeons" hint
+    local hintText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    hintText:SetText("Click for dungeons")
+    hintText:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 6, 6)
+    hintText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
+
+    -- Click handler to open dungeon detail overlay
+    local clickAccountID = accountID
+    card:SetScript("OnClick", function()
+        if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.ShowForMember then
+            BloodPact_DungeonDetailOverlay:ShowForMember(clickAccountID)
+        end
+    end)
+
+    -- Hover highlight
+    card:SetScript("OnEnter", function()
+        card:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    end)
+    card:SetScript("OnLeave", function()
+        card:SetBackdropBorderColor(0.30, 0.30, 0.30, 1)
+    end)
 
     return card
 end

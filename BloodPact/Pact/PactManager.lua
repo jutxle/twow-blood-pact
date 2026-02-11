@@ -169,6 +169,7 @@ function BloodPact_PactManager:OnJoinResponse(data)
     -- Force roster broadcast so creator sees our level even if we're on a non-main character
     BloodPact_SyncEngine:BroadcastAllDeaths()
     BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
+    BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
@@ -267,6 +268,7 @@ function BloodPact_PactManager:OnSyncRequest(senderID)
     if not self:IsInPact() then return end
     BloodPact_SyncEngine:BroadcastAllDeaths()
     BloodPact_SyncEngine:BroadcastRosterSnapshot()
+    BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
 end
 
 -- Called when a roster snapshot arrives from a pact member
@@ -293,6 +295,26 @@ function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
         talentTabs      = data.talentTabs or {},
         timestamp       = data.timestamp
     }
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+end
+
+-- Called when a single dungeon completion arrives from a pact member
+function BloodPact_PactManager:OnMemberDungeonCompletion(senderID, data)
+    if not self:IsInPact() then return end
+    BloodPact_DungeonDataManager:StoreSyncedCompletion(senderID, data)
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+end
+
+-- Called when bulk dungeon completions arrive from a pact member (login/join sync)
+function BloodPact_PactManager:OnMemberDungeonBulk(senderID, completions)
+    if not self:IsInPact() then return end
+    BloodPact_DungeonDataManager:StoreSyncedCompletions(senderID, completions)
+
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
     end

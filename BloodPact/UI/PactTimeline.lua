@@ -15,6 +15,7 @@ function BloodPact_PactTimeline:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    panel:SetFrameLevel(10)
     panel:Hide()
 
     self:CreateFilterBar()
