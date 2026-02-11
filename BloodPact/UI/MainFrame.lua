@@ -178,9 +178,9 @@ function BloodPact_MainFrame:CreateStatusBar()
     BP_ApplyBackdrop(statusBar, true)
     statusBar:SetBackdropColor(0.08, 0.08, 0.08, 1)
 
-    frame.accountIDText = BP_CreateFontString(statusBar, BP_FONT_SIZE_SMALL)
-    frame.accountIDText:SetPoint("LEFT", statusBar, "LEFT", 8, 0)
-    frame.accountIDText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+    frame.displayNameText = BP_CreateFontString(statusBar, BP_FONT_SIZE_SMALL)
+    frame.displayNameText:SetPoint("LEFT", statusBar, "LEFT", 8, 0)
+    frame.displayNameText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     local versionText = BP_CreateFontString(statusBar, BP_FONT_SIZE_SMALL)
     versionText:SetText("Blood Pact v" .. BLOODPACT_VERSION)
@@ -208,9 +208,10 @@ function BloodPact_MainFrame:SwitchTab(tabIndex)
     activeTab = tabIndex
     self:UpdateTabHighlight()
 
-    -- Hide any open timelines before switching
-    BloodPact_PersonalTimeline:Hide()
-    BloodPact_PactTimeline:Hide()
+    -- Hide any open overlays before switching
+    if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Hide then BloodPact_PersonalTimeline:Hide() end
+    if BloodPact_PactTimeline and BloodPact_PactTimeline.Hide then BloodPact_PactTimeline:Hide() end
+    if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Hide then BloodPact_DungeonDetailOverlay:Hide() end
 
     -- Show/hide panels
     for i, panel in pairs(tabPanels) do
@@ -253,10 +254,10 @@ end
 function BloodPact_MainFrame:Show()
     if not frame then self:Create() end
 
-    -- Update account ID in status bar
-    local accountID = BloodPact_AccountIdentity:GetAccountID()
-    if frame.accountIDText then
-        frame.accountIDText:SetText("Account: " .. (accountID or "Unknown"))
+    -- Update display name in status bar
+    local displayName = BloodPact_AccountIdentity:GetDisplayName()
+    if frame.displayNameText then
+        frame.displayNameText:SetText(displayName or "Unknown")
     end
 
     self:ApplyTransparency()

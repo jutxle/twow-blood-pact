@@ -15,16 +15,40 @@ function BloodPact_Settings:Create(parent)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
     panel:Hide()
 
+    -- Scrollable content area
+    local scrollFrame = CreateFrame("ScrollFrame", "BPSettingsScroll", panel)
+    scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function()
+        local delta = arg1
+        local current = scrollFrame:GetVerticalScroll()
+        scrollFrame:SetVerticalScroll(math.max(0, current - delta * 24))
+    end)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetPoint("TOPLEFT", scrollFrame, "TOPLEFT", 0, 0)
+    scrollChild:SetWidth(parent:GetWidth() - 8)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    panel.scrollFrame = scrollFrame
+    panel.scrollChild = scrollChild
+
     local yOffset = -8
 
     -- Account Information section
-    yOffset = self:CreateSection(panel, "Account Information", yOffset, function(section)
-        panel.accountIDLine = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
-        panel.accountIDLine:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
-        panel.accountIDLine:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+    yOffset = self:CreateSection(scrollChild, "Account Information", yOffset, function(section)
+        panel.displayNameLine = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        panel.displayNameLine:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
+        panel.displayNameLine:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+        panel.setNameHint = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        panel.setNameHint:SetPoint("TOPLEFT", panel.displayNameLine, "BOTTOMLEFT", 0, -2)
+        panel.setNameHint:SetText("Change: /bp setname <name>")
+        panel.setNameHint:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
 
         panel.createdLine = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
-        panel.createdLine:SetPoint("TOPLEFT", panel.accountIDLine, "BOTTOMLEFT", 0, -4)
+        panel.createdLine:SetPoint("TOPLEFT", panel.setNameHint, "BOTTOMLEFT", 0, -4)
         panel.createdLine:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
 
         -- Main character selector
@@ -79,11 +103,11 @@ function BloodPact_Settings:Create(parent)
             end
         end)
 
-        section:SetHeight(130)
+        section:SetHeight(150)
     end)
 
     -- Blood Pact Membership section
-    yOffset = self:CreateSection(panel, "Blood Pact Membership", yOffset, function(section)
+    yOffset = self:CreateSection(scrollChild, "Blood Pact Membership", yOffset, function(section)
         panel.pactStatusText = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
         panel.pactStatusText:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
         panel.pactStatusText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
@@ -128,7 +152,7 @@ function BloodPact_Settings:Create(parent)
     end)
 
     -- UI Preferences section
-    yOffset = self:CreateSection(panel, "UI Preferences", yOffset, function(section)
+    yOffset = self:CreateSection(scrollChild, "UI Preferences", yOffset, function(section)
         local alphaLabel = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
         alphaLabel:SetText("Window transparency:")
         alphaLabel:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
@@ -154,7 +178,7 @@ function BloodPact_Settings:Create(parent)
     end)
 
     -- Data Management section
-    yOffset = self:CreateSection(panel, "Data Management", yOffset, function(section)
+    yOffset = self:CreateSection(scrollChild, "Data Management", yOffset, function(section)
         local wipeBtn = BP_CreateButton(section, "Wipe All Data", 110, 22)
         wipeBtn:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
         wipeBtn:SetScript("OnClick", function()
@@ -163,6 +187,10 @@ function BloodPact_Settings:Create(parent)
 
         section:SetHeight(50)
     end)
+
+    -- Set scroll child height to fit all content
+    local totalHeight = 8 - yOffset
+    scrollChild:SetHeight(math.max(1, totalHeight))
 
     -- Register as tab 3 (Settings)
     BloodPact_MainFrame:RegisterTabPanel(3, panel)
@@ -216,9 +244,9 @@ function BloodPact_Settings:Refresh()
     if not panel then return end
 
     -- Account info
-    local accountID = BloodPact_AccountIdentity:GetAccountID() or "Unknown"
-    if panel.accountIDLine then
-        panel.accountIDLine:SetText("Account ID: " .. accountID)
+    local displayName = BloodPact_AccountIdentity:GetDisplayName() or "Unknown"
+    if panel.displayNameLine then
+        panel.displayNameLine:SetText("Display Name: " .. displayName)
     end
 
     -- Main character display

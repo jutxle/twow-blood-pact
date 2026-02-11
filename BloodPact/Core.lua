@@ -26,13 +26,23 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
     if event == "VARIABLES_LOADED" then
         BloodPact_SavedVariablesHandler:OnVariablesLoaded()
         BloodPact_SyncEngine:Initialize()
+        if BloodPact_DungeonTracker and BloodPact_DungeonTracker.Initialize then
+            BloodPact_DungeonTracker:Initialize()
+        end
 
         -- Initialize UI modules (deferred until data is available)
         BloodPact_MainFrame:Create()
         BloodPact_PersonalDashboard:Initialize()
-        BloodPact_PersonalTimeline:Initialize()
+        if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Initialize then
+            BloodPact_PersonalTimeline:Initialize()
+        end
         BloodPact_PactDashboard:Initialize()
-        BloodPact_PactTimeline:Initialize()
+        if BloodPact_PactTimeline and BloodPact_PactTimeline.Initialize then
+            BloodPact_PactTimeline:Initialize()
+        end
+        if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Initialize then
+            BloodPact_DungeonDetailOverlay:Initialize()
+        end
         BloodPact_Settings:Initialize()
 
         -- If we are in a pact, schedule a sync request after login
@@ -50,6 +60,9 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 
     elseif event == "CHAT_MSG_COMBAT_HOSTILE_DEATH" then
         BloodPact_DeathDetector:OnCombatDeathMessage(a1)
+        if BloodPact_DungeonTracker and BloodPact_DungeonTracker.OnCombatDeathMessage then
+            BloodPact_DungeonTracker:OnCombatDeathMessage(a1)
+        end
 
     elseif event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS" then
         BloodPact_DeathDetector:OnCreatureHitsPlayer(a1)
@@ -127,6 +140,7 @@ BloodPactFrame:SetScript("OnUpdate", function()
             BP_LoginSyncPending = false
             BloodPact_SyncEngine:SendSyncRequest()
             BloodPact_SyncEngine:BroadcastRosterSnapshot()
+            BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
         end
     end
 

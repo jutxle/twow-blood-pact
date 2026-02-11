@@ -313,14 +313,15 @@ end
 
 -- ============================================================
 -- Message Type: ROSTER_SNAPSHOT
--- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp
--- (talent fields optional for backward compatibility)
+-- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp~displayName
+-- (talent fields optional for backward compatibility; displayName optional - added for Display Name feature)
 -- ============================================================
 
 function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, snapshot)
     if not snapshot then return nil end
     local tabs = snapshot.talentTabs or {}
     local t1, t2, t3 = tabs[1], tabs[2], tabs[3]
+    local displayName = snapshot.displayName or snapshot.characterName or ""
     local parts = {
         "RS",
         Escape(senderID),
@@ -339,7 +340,8 @@ function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, sna
         tostring((t2 and t2.pointsSpent) or 0),
         Escape((t3 and t3.name) or ""),
         tostring((t3 and t3.pointsSpent) or 0),
-        tostring(snapshot.timestamp or 0)
+        tostring(snapshot.timestamp or 0),
+        Escape(displayName)
     }
     return table.concat(parts, "~")
 end
@@ -371,20 +373,145 @@ function BloodPact_Serialization:DeserializeRosterSnapshot(str)
         table.insert(talentTabs, { name = Unescape(fields[16]), pointsSpent = tonumber(fields[17]) or 0 })
     end
     local timestampIdx = (table.getn(fields) >= 18) and 18 or 12
+    local displayName = nil
+    if table.getn(fields) >= 19 and fields[19] and string.len(fields[19]) > 0 then
+        displayName = Unescape(fields[19])
+    end
+
+    return {
+        senderID      = Unescape(fields[2]),
+        pactCode      = Unescape(fields[3]),
+        characterName = Unescape(fields[4]),
+        displayName   = displayName,
+        class         = Unescape(fields[5]),
+        level         = tonumber(fields[6]) or 0,
+        copper        = tonumber(fields[7]) or 0,
+        profession1   = Unescape(fields[8]),
+        profession1Level = tonumber(fields[9]) or 0,
+        profession2   = Unescape(fields[10]),
+        profession2Level = tonumber(fields[11]) or 0,
+        talentTabs    = talentTabs,
+        timestamp     = tonumber(fields[timestampIdx]) or 0
+    }
+end
+
+-- ============================================================
+-- Message Type: DUNGEON_COMPLETION (single, real-time)
+-- Format: DC~senderID~pactCode~charName~dungeonID~timestamp
+-- ============================================================
+
+function BloodPact_Serialization:SerializeDungeonCompletion(senderID, pactCode, completion)
+    local parts = {
+        "DC",
+        Escape(senderID),
+        Escape(pactCode),
+        Escape(completion.characterName or ""),
+        Escape(completion.dungeonID or ""),
+        tostring(completion.timestamp or 0),
+    }
+    return table.concat(parts, "~")
+end
+
+function BloodPact_Serialization:DeserializeDungeonCompletion(str)
+    local fields = {}
+    local pos = 1
+    local len = string.len(str)
+    while pos <= len do
+        local nextSep = string.find(str, "~", pos, true)
+        local part
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
+        else
+            part = string.sub(str, pos)
+            pos = len + 1
+        end
+        table.insert(fields, part)
+    end
+
+    if table.getn(fields) < 6 then return nil end
+    if fields[1] ~= "DC" then return nil end
+
+    return {
+        senderID      = Unescape(fields[2]),
+        pactCode      = Unescape(fields[3]),
+        characterName = Unescape(fields[4]),
+        dungeonID     = Unescape(fields[5]),
+        timestamp     = tonumber(fields[6]) or 0,
+    }
+end
+
+-- ============================================================
+-- Message Type: DUNGEON_BULK (full sync on login/join)
+-- Format: DB~senderID~pactCode~dungeonID1=ts1,dungeonID2=ts2,...
+-- ============================================================
+
+function BloodPact_Serialization:SerializeDungeonBulk(senderID, pactCode, completions)
+    -- completions = { [dungeonID] = timestamp, ... }
+    local dungeonParts = {}
+    for dungeonID, ts in pairs(completions) do
+        table.insert(dungeonParts, Escape(dungeonID) .. "=" .. tostring(ts))
+    end
+    local payload = table.concat(dungeonParts, ",")
+    return "DB~" .. Escape(senderID) .. "~" .. Escape(pactCode) .. "~" .. payload
+end
+
+function BloodPact_Serialization:DeserializeDungeonBulk(str)
+    -- Split into header fields: DB~senderID~pactCode~payload
+    local fields = {}
+    local pos = 1
+    local len = string.len(str)
+    local fieldCount = 0
+    while pos <= len and fieldCount < 3 do
+        local nextSep = string.find(str, "~", pos, true)
+        local part
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
+        else
+            part = string.sub(str, pos)
+            pos = len + 1
+        end
+        table.insert(fields, part)
+        fieldCount = fieldCount + 1
+    end
+    -- Remainder is the payload
+    local payload = string.sub(str, pos)
+
+    if table.getn(fields) < 3 then return nil end
+    if fields[1] ~= "DB" then return nil end
+
+    -- Parse payload: dungeonID1=ts1,dungeonID2=ts2,...
+    local completions = {}
+    if payload and string.len(payload) > 0 then
+        local pPos = 1
+        local pLen = string.len(payload)
+        while pPos <= pLen do
+            local nextComma = string.find(payload, ",", pPos, true)
+            local entry
+            if nextComma then
+                entry = string.sub(payload, pPos, nextComma - 1)
+                pPos = nextComma + 1
+            else
+                entry = string.sub(payload, pPos)
+                pPos = pLen + 1
+            end
+            -- Parse "dungeonID=timestamp"
+            local eqPos = string.find(entry, "=", 1, true)
+            if eqPos then
+                local dungeonID = Unescape(string.sub(entry, 1, eqPos - 1))
+                local ts = tonumber(string.sub(entry, eqPos + 1)) or 0
+                if dungeonID and string.len(dungeonID) > 0 then
+                    completions[dungeonID] = ts
+                end
+            end
+        end
+    end
 
     return {
         senderID    = Unescape(fields[2]),
         pactCode    = Unescape(fields[3]),
-        characterName = Unescape(fields[4]),
-        class       = Unescape(fields[5]),
-        level       = tonumber(fields[6]) or 0,
-        copper      = tonumber(fields[7]) or 0,
-        profession1 = Unescape(fields[8]),
-        profession1Level = tonumber(fields[9]) or 0,
-        profession2 = Unescape(fields[10]),
-        profession2Level = tonumber(fields[11]) or 0,
-        talentTabs  = talentTabs,
-        timestamp   = tonumber(fields[timestampIdx]) or 0
+        completions = completions,
     }
 end
 

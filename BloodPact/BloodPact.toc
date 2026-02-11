@@ -10,14 +10,17 @@ Utils\Debug.lua
 Utils\Serialization.lua
 Utils\RateLimiter.lua
 Config.lua
+Data\DungeonDatabase.lua
 Data\AccountIdentity.lua
 Data\CharacterIdentity.lua
 Data\RosterDataManager.lua
 Data\SavedVariablesHandler.lua
 Data\DeathDataManager.lua
+Data\DungeonDataManager.lua
 CombatLog\DataExtractor.lua
 CombatLog\Parser.lua
 CombatLog\DeathDetector.lua
+CombatLog\DungeonTracker.lua
 Pact\JoinCodeGenerator.lua
 Pact\ConflictResolver.lua
 Pact\OwnershipManager.lua
@@ -31,5 +34,6 @@ UI\PersonalDashboard.lua
 UI\PersonalTimeline.lua
 UI\PactDashboard.lua
 UI\PactTimeline.lua
+UI\DungeonDetailOverlay.lua
 UI\Settings.lua
 Core.lua

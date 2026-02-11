@@ -30,6 +30,9 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     if not BloodPactAccountDB.characters then
         BloodPactAccountDB.characters = {}
     end
+    if not BloodPactAccountDB.dungeonCompletions then
+        BloodPactAccountDB.dungeonCompletions = {}
+    end
     if not BloodPactAccountDB.config then
         BloodPactAccountDB.config = {
             uiScale            = 1.0,
@@ -45,6 +48,10 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     end
     if BloodPactAccountDB.config.mainCharacter == nil then
         BloodPactAccountDB.config.mainCharacter = nil  -- explicitly nil = use current char
+    end
+    -- Migrate: ensure displayName exists (default to accountID)
+    if (BloodPactAccountDB.config.displayName == nil or BloodPactAccountDB.config.displayName == "") and BloodPactAccountDB.accountID then
+        BloodPactAccountDB.config.displayName = BloodPactAccountDB.accountID
     end
 
     -- Ensure debug storage exists
@@ -96,6 +103,7 @@ function BloodPact_SavedVariablesHandler:ValidateData()
             if not pact.members then pact.members = {} end
             if not pact.syncedDeaths then pact.syncedDeaths = {} end
             if not pact.rosterSnapshots then pact.rosterSnapshots = {} end
+            if not pact.syncedDungeonCompletions then pact.syncedDungeonCompletions = {} end
         end
     end
 end

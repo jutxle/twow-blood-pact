@@ -30,8 +30,10 @@ function BloodPact_RosterDataManager:GetCurrentSnapshot()
     local prof1, prof1Level, prof2, prof2Level = self:GetProfessionLevels()
     local talentTabs = self:GetTalentTabs()
 
+    local displayName = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayName() or charName
     return {
         characterName = charName,
+        displayName   = displayName,
         class         = classEn or "",
         level         = level,
         copper        = copper,

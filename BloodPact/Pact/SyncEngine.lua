@@ -80,6 +80,30 @@ function BloodPact_SyncEngine:BroadcastRosterSnapshot(forceBroadcast)
     if msg then self:QueueMessage(msg) end
 end
 
+-- Broadcast a single dungeon completion to pact members (real-time on boss kill)
+function BloodPact_SyncEngine:BroadcastDungeonCompletion(completion)
+    if not BloodPact_PactManager:IsInPact() then return end
+    local selfID   = BloodPact_AccountIdentity:GetAccountID()
+    local pactCode = BloodPact_PactManager:GetPactCode()
+    local msg = BloodPact_Serialization:SerializeDungeonCompletion(selfID, pactCode, completion)
+    if msg then self:QueueMessage(msg) end
+end
+
+-- Broadcast all local dungeon completions to pact members (bulk sync on login/join)
+function BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
+    if not BloodPact_PactManager:IsInPact() then return end
+    if not BloodPact_DungeonDataManager then return end
+    local selfID   = BloodPact_AccountIdentity:GetAccountID()
+    local pactCode = BloodPact_PactManager:GetPactCode()
+    local completions = BloodPact_DungeonDataManager:GetLocalCompletionsForBroadcast()
+    -- Check if there's anything to send
+    local hasAny = false
+    for _ in pairs(completions) do hasAny = true; break end
+    if not hasAny then return end
+    local msg = BloodPact_Serialization:SerializeDungeonBulk(selfID, pactCode, completions)
+    if msg then self:QueueMessage(msg) end
+end
+
 -- Send a sync request (asking others to send us their deaths)
 function BloodPact_SyncEngine:SendSyncRequest()
     if not BloodPact_PactManager:IsInPact() then return end
@@ -204,6 +228,10 @@ function BloodPact_SyncEngine:OnAddonMessage(msg, channel, sender)
         self:HandleSyncRequest(msg, sender)
     elseif msgType == "RS" then
         self:HandleRosterSnapshot(msg, sender)
+    elseif msgType == "DC" then
+        self:HandleDungeonCompletion(msg, sender)
+    elseif msgType == "DB" then
+        self:HandleDungeonBulk(msg, sender)
     elseif msgType == "CK" then
         self:HandleChunk(msg, sender)
     end
@@ -258,6 +286,24 @@ function BloodPact_SyncEngine:HandleRosterSnapshot(msg, sender)
     if not data then return end
     if not self:IsMessageForOurPact(data.pactCode) then return end
     BloodPact_PactManager:OnRosterSnapshot(data.senderID, data)
+end
+
+function BloodPact_SyncEngine:HandleDungeonCompletion(msg, sender)
+    local data = BloodPact_Serialization:DeserializeDungeonCompletion(msg)
+    if not data then return end
+    if not self:IsMessageForOurPact(data.pactCode) then return end
+    if data.senderID == BloodPact_AccountIdentity:GetAccountID() then return end
+
+    BloodPact_PactManager:OnMemberDungeonCompletion(data.senderID, data)
+end
+
+function BloodPact_SyncEngine:HandleDungeonBulk(msg, sender)
+    local data = BloodPact_Serialization:DeserializeDungeonBulk(msg)
+    if not data then return end
+    if not self:IsMessageForOurPact(data.pactCode) then return end
+    if data.senderID == BloodPact_AccountIdentity:GetAccountID() then return end
+
+    BloodPact_PactManager:OnMemberDungeonBulk(data.senderID, data.completions)
 end
 
 function BloodPact_SyncEngine:HandleChunk(msg, sender)
