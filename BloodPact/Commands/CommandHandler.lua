@@ -42,8 +42,8 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif input == "help" then
         self:ShowHelp()
     elseif input == "debug" then
-        BloodPact_Logger:SetLevel(BloodPact_Logger.LEVEL.INFO)
-        BloodPact_Logger:Print("Debug logging enabled.")
+        BloodPact_Logger:SetLevel(BloodPact_Logger.LEVEL.DEBUG)
+        BloodPact_Logger:Print("Verbose debug logging enabled.")
     elseif input == "nodebug" then
         BloodPact_Logger:SetLevel(BloodPact_Logger.LEVEL.WARNING)
         BloodPact_Logger:Print("Debug logging disabled.")
@@ -59,6 +59,23 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif input == "simremove" or string.sub(input, 1, 10) == "simremove " then
         local accountName = string.sub(rawInput, 11)
         self:HandleSimRemove(accountName)
+    elseif input == "errors" then
+        self:ShowErrors()
+    elseif input == "clearerrors" then
+        BloodPact_Debug:ClearErrorLog()
+        BloodPact_Logger:Print("Error log cleared.")
+    elseif input == "trace" then
+        local current = BloodPact_Debug:IsTraceEnabled()
+        BloodPact_Debug:SetTraceEnabled(not current)
+        BloodPact_Logger:Print("Message tracing: " .. (not current and "ENABLED" or "DISABLED"))
+    elseif input == "dump" then
+        BloodPact_Debug:DumpState()
+    elseif string.sub(input, 1, 8) == "profile " or input == "profile" then
+        local sub = ""
+        if string.len(input) > 8 then
+            sub = string.gsub(string.sub(input, 9), "^%s*(.-)%s*$", "%1")
+        end
+        self:HandleProfile(sub)
     else
         BloodPact_Logger:Print("Unknown command. Type /bloodpact help for a list of commands.")
     end
@@ -141,7 +158,51 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact join <code> - Join a Blood Pact using a join code")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact wipe     - Wipe all death data (requires confirmation)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact help     - Show this help message")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp errors        - Show recent errors from persistent log")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp clearerrors   - Clear the error log")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp trace         - Toggle addon message tracing")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp dump          - Dump addon state to chat")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp profile       - Show/clear performance profiles")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp                 - Shortcut for /bloodpact")
+end
+
+function BloodPact_CommandHandler:ShowErrors()
+    local errors = BloodPact_Debug:GetErrorLog()
+    local count = table.getn(errors)
+    if count == 0 then
+        BloodPact_Logger:Print("No errors in log.")
+        return
+    end
+    BloodPact_Logger:Print("=== Error Log (" .. tostring(count) .. " entries) ===")
+    local startIdx = math.max(1, count - 9)
+    for i = startIdx, count do
+        local e = errors[i]
+        local ts = date("%H:%M:%S", e.timestamp)
+        local countStr = (e.count and e.count > 1) and (" (x" .. tostring(e.count) .. ")") or ""
+        local catStr = e.category and ("[" .. e.category .. "] ") or ""
+        BloodPact_Logger:Print("[" .. ts .. "] " .. catStr .. tostring(e.message) .. countStr)
+    end
+    if startIdx > 1 then
+        BloodPact_Logger:Print("(" .. tostring(startIdx - 1) .. " older entries hidden)")
+    end
+end
+
+function BloodPact_CommandHandler:HandleProfile(sub)
+    if sub == "clear" then
+        BloodPact_Debug:ClearProfiles()
+        BloodPact_Logger:Print("Profile data cleared.")
+    elseif sub == "show" or sub == "" then
+        local profiles = BloodPact_Debug:GetProfiles()
+        local hasAny = false
+        for label, data in pairs(profiles) do
+            hasAny = true
+            BloodPact_Logger:Print(label .. ": " .. tostring(data.callCount or 0) .. " calls, " ..
+                string.format("%.1f", data.totalMs or 0) .. "ms total")
+        end
+        if not hasAny then BloodPact_Logger:Print("No profile data.") end
+    else
+        BloodPact_Logger:Print("Usage: /bp profile [show|clear]")
+    end
 end
 
 -- ============================================================

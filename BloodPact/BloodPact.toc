@@ -6,6 +6,7 @@
 ## SavedVariables: BloodPactAccountDB
 
 Utils\Logger.lua
+Utils\Debug.lua
 Utils\Serialization.lua
 Utils\RateLimiter.lua
 Config.lua

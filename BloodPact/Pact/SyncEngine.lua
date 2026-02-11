@@ -134,15 +134,24 @@ function BloodPact_SyncEngine:SendOnAllChannels(msg)
 
     -- Wrap SendAddonMessage with pcall as safety net against Hooks.lua validation
     if IsInGuild and IsInGuild() then
+        if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
+            BloodPact_Debug:TraceOutgoing(msg, "GUILD")
+        end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "GUILD")
         if ok then sent = true end
     end
 
     local numRaid = GetNumRaidMembers and GetNumRaidMembers() or 0
     if numRaid > 0 then
+        if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
+            BloodPact_Debug:TraceOutgoing(msg, "RAID")
+        end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "RAID")
         if ok then sent = true end
     elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
+        if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
+            BloodPact_Debug:TraceOutgoing(msg, "PARTY")
+        end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "PARTY")
         if ok then sent = true end
     end
@@ -158,6 +167,10 @@ end
 
 function BloodPact_SyncEngine:OnAddonMessage(msg, channel, sender)
     if not msg then return end
+
+    if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
+        BloodPact_Debug:TraceIncoming(msg, channel, sender)
+    end
 
     -- Get message type
     local msgType = BloodPact_Serialization:GetMessageType(msg)

@@ -25,6 +25,7 @@ end
 BloodPact_Logger = {}
 
 BloodPact_Logger.LEVEL = {
+    DEBUG   = 0,
     INFO    = 1,
     WARNING = 2,
     ERROR   = 3
@@ -49,21 +50,42 @@ function BloodPact_Logger:SetLevel(level)
     self.currentLevel = level
 end
 
-function BloodPact_Logger:Info(msg)
-    if self.currentLevel <= self.LEVEL.INFO then
-        SafeAddMessage("[BloodPact] " .. tostring(msg))
-    end
+function BloodPact_Logger:Debug(msg, category)
+    if self.currentLevel > self.LEVEL.DEBUG then return end
+    local prefix = "[BloodPact]"
+    if category then prefix = prefix .. "[" .. category .. "]" end
+    SafeAddMessage(prefix .. " DEBUG: " .. tostring(msg))
 end
 
-function BloodPact_Logger:Warning(msg)
-    if self.currentLevel <= self.LEVEL.WARNING then
-        SafeAddMessage("[BloodPact] WARNING: " .. tostring(msg))
-    end
+function BloodPact_Logger:Info(msg, category)
+    if self.currentLevel > self.LEVEL.INFO then return end
+    local prefix = "[BloodPact]"
+    if category then prefix = prefix .. "[" .. category .. "]" end
+    SafeAddMessage(prefix .. " " .. tostring(msg))
 end
 
-function BloodPact_Logger:Error(msg)
-    if self.currentLevel <= self.LEVEL.ERROR then
-        SafeAddMessage("[BloodPact] ERROR: " .. tostring(msg))
+function BloodPact_Logger:Warning(msg, category)
+    if self.currentLevel > self.LEVEL.WARNING then return end
+    local prefix = "[BloodPact]"
+    if category then prefix = prefix .. "[" .. category .. "]" end
+    SafeAddMessage(prefix .. " WARNING: " .. tostring(msg))
+end
+
+function BloodPact_Logger:Error(msg, category)
+    if self.currentLevel > self.LEVEL.ERROR then return end
+    local prefix = "[BloodPact]"
+    if category then prefix = prefix .. "[" .. category .. "]" end
+    SafeAddMessage(prefix .. " ERROR: " .. tostring(msg))
+
+    -- Auto-persist to error log with stack trace
+    local stack = debugstack and debugstack(2, 8, 0) or nil
+    if BloodPact_Debug then
+        BloodPact_Debug:LogError(tostring(msg), stack, category)
+    end
+
+    -- Show stack in chat when at DEBUG level
+    if stack and self.currentLevel <= self.LEVEL.DEBUG then
+        SafeAddMessage("[BloodPact] Stack: " .. stack)
     end
 end
 

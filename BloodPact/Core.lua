@@ -144,6 +144,28 @@ BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
 BloodPactFrame:RegisterEvent("CHAT_MSG_ADDON")
 
 -- ============================================================
+-- Wrap main event/update handlers for error capture
+-- ============================================================
+
+if BloodPact_Debug then
+    local originalOnEvent = BloodPactFrame:GetScript("OnEvent")
+    if originalOnEvent then
+        BloodPactFrame:SetScript("OnEvent", function()
+            local ok, err = pcall(originalOnEvent)
+            if not ok then
+                BloodPact_Debug:LogError("[OnEvent:" .. tostring(event) .. "] " .. tostring(err),
+                    debugstack and debugstack(2, 8, 0) or nil, "CORE")
+                if DEFAULT_CHAT_FRAME then
+                    DEFAULT_CHAT_FRAME:AddMessage("[BloodPact] ERROR in " .. tostring(event) .. ": " .. tostring(err))
+                end
+            end
+        end)
+    end
+
+    BloodPact_Debug:WrapScript(BloodPactFrame, "OnUpdate")
+end
+
+-- ============================================================
 -- Initialization
 -- ============================================================
 

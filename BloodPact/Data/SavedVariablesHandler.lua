@@ -40,6 +40,14 @@ function BloodPact_SavedVariablesHandler:ValidateData()
         }
     end
 
+    -- Ensure debug storage exists
+    if not BloodPactAccountDB.debug then
+        BloodPactAccountDB.debug = { errorLog = {} }
+    end
+    if not BloodPactAccountDB.debug.errorLog then
+        BloodPactAccountDB.debug.errorLog = {}
+    end
+
     -- Validate death records
     if BloodPactAccountDB.deaths then
         for charName, deathList in pairs(BloodPactAccountDB.deaths) do
