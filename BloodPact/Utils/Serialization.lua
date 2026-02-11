@@ -312,6 +312,65 @@ function BloodPact_Serialization:DeserializeChunk(str)
 end
 
 -- ============================================================
+-- Message Type: ROSTER_SNAPSHOT
+-- Format: RS~senderAccountID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~timestamp
+-- ============================================================
+
+function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, snapshot)
+    if not snapshot then return nil end
+    local parts = {
+        "RS",
+        Escape(senderID),
+        Escape(pactCode),
+        Escape(snapshot.characterName or ""),
+        Escape(snapshot.class or ""),
+        tostring(snapshot.level or 0),
+        tostring(snapshot.copper or 0),
+        Escape(snapshot.profession1 or ""),
+        tostring(snapshot.profession1Level or 0),
+        Escape(snapshot.profession2 or ""),
+        tostring(snapshot.profession2Level or 0),
+        tostring(snapshot.timestamp or 0)
+    }
+    return table.concat(parts, "~")
+end
+
+function BloodPact_Serialization:DeserializeRosterSnapshot(str)
+    local fields = {}
+    local pos = 1
+    local len = string.len(str)
+    while pos <= len do
+        local nextSep = string.find(str, "~", pos, true)
+        local part
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
+        else
+            part = string.sub(str, pos)
+            pos = len + 1
+        end
+        table.insert(fields, part)
+    end
+
+    if table.getn(fields) < 12 then return nil end
+    if fields[1] ~= "RS" then return nil end
+
+    return {
+        senderID    = Unescape(fields[2]),
+        pactCode    = Unescape(fields[3]),
+        characterName = Unescape(fields[4]),
+        class       = Unescape(fields[5]),
+        level       = tonumber(fields[6]) or 0,
+        copper      = tonumber(fields[7]) or 0,
+        profession1 = Unescape(fields[8]),
+        profession1Level = tonumber(fields[9]) or 0,
+        profession2 = Unescape(fields[10]),
+        profession2Level = tonumber(fields[11]) or 0,
+        timestamp   = tonumber(fields[12]) or 0
+    }
+end
+
+-- ============================================================
 -- Utility: Get message type from raw string
 -- ============================================================
 

@@ -1,10 +1,10 @@
 -- Blood Pact - Pact Dashboard
--- Displays pact-level statistics and member roster
+-- Displays pact-level statistics and member roster with character cards
 
 BloodPact_PactDashboard = {}
 
 local panel = nil
-local memberRows = {}
+local rosterCards = {}
 
 -- ============================================================
 -- Construction
@@ -93,14 +93,14 @@ function BloodPact_PactDashboard:CreateMemberList()
     BP_ApplyPanelBackdrop(listFrame)
 
     local header = BP_CreateFontString(listFrame, BP_FONT_SIZE_SMALL)
-    header:SetText("Pact Members")
+    header:SetText("Pact Roster (Main Characters)")
     header:SetPoint("TOPLEFT", listFrame, "TOPLEFT", 8, -6)
     header:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     local divider = BP_CreateDivider(listFrame, 500)
     divider:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
 
-    local scrollFrame = CreateFrame("ScrollFrame", "BPPactMemberScroll", listFrame)
+    local scrollFrame = CreateFrame("ScrollFrame", "BPPactRosterScroll", listFrame)
     scrollFrame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 0, -2)
     scrollFrame:SetPoint("BOTTOMRIGHT", listFrame, "BOTTOMRIGHT", -4, 4)
     scrollFrame:EnableMouseWheel(true)
@@ -188,40 +188,70 @@ function BloodPact_PactDashboard:Refresh()
         panel.statCards.gold.value:SetTextColor(1.0, 0.84, 0.0, 1)
     end
 
-    -- Rebuild member list
-    self:RefreshMemberList()
+    -- Rebuild roster cards
+    self:RefreshRosterCards()
 end
 
-function BloodPact_PactDashboard:RefreshMemberList()
-    for _, row in ipairs(memberRows) do
-        row:Hide()
-        row:SetParent(nil)
+function BloodPact_PactDashboard:RefreshRosterCards()
+    for _, card in ipairs(rosterCards) do
+        card:Hide()
+        card:SetParent(nil)
     end
-    memberRows = {}
+    rosterCards = {}
 
     if not panel.memberScrollChild then return end
     if not BloodPactAccountDB.pact or not BloodPactAccountDB.pact.members then return end
 
-    local rowHeight = 24
-    local yOffset = 0
+    local pact = BloodPactAccountDB.pact
+    local rosterSnapshots = pact.rosterSnapshots or {}
+    local selfID = BloodPact_AccountIdentity:GetAccountID()
 
-    for accountID, member in pairs(BloodPactAccountDB.pact.members) do
-        local row = self:CreateMemberRow(panel.memberScrollChild, accountID, member, yOffset)
-        table.insert(memberRows, row)
-        yOffset = yOffset - rowHeight
+    -- Card dimensions: 2 columns
+    local cardW = 275
+    local cardH = 88
+    local padX = 4
+    local padY = 6
+    local cols = 2
+
+    local idx = 0
+    for accountID, member in pairs(pact.members) do
+        local snapshot = rosterSnapshots[accountID]
+        -- Use our own live snapshot when this is us
+        if accountID == selfID and BloodPact_RosterDataManager then
+            snapshot = BloodPact_RosterDataManager:GetCurrentSnapshot()
+        end
+        local col = math.mod(idx, cols)
+        local row = math.floor(idx / cols)
+        local card = self:CreateRosterCard(panel.memberScrollChild, accountID, member, snapshot, col, row, cardW, cardH, padX, padY)
+        table.insert(rosterCards, card)
+        idx = idx + 1
     end
 
-    panel.memberScrollChild:SetHeight(math.max(1, -yOffset))
+    local totalRows = math.ceil(idx / cols)
+    panel.memberScrollChild:SetHeight(math.max(1, totalRows * (cardH + padY)))
 end
 
-function BloodPact_PactDashboard:CreateMemberRow(parent, accountID, member, yOffset)
-    local row = CreateFrame("Frame", nil, parent)
-    row:SetHeight(24)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, yOffset)
+function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, snapshot, col, row, cardW, cardH, padX, padY)
+    local card = CreateFrame("Frame", nil, parent)
+    card:SetWidth(cardW)
+    card:SetHeight(cardH)
+    card:SetPoint("TOPLEFT", parent, "TOPLEFT",
+        col * (cardW + padX),
+        -(row * (cardH + padY)))
 
-    -- Status icon
-    local statusIcon = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
+    BP_ApplyPanelBackdrop(card)
+
+    local charName = (snapshot and snapshot.characterName and snapshot.characterName ~= "") and snapshot.characterName or accountID
+    local class = (snapshot and snapshot.class) or ""
+    local level = (snapshot and snapshot.level) or member.highestLevel or 0
+    local copper = (snapshot and snapshot.copper) or 0
+    local prof1 = (snapshot and snapshot.profession1) or ""
+    local prof1Lvl = (snapshot and snapshot.profession1Level) or 0
+    local prof2 = (snapshot and snapshot.profession2) or ""
+    local prof2Lvl = (snapshot and snapshot.profession2Level) or 0
+
+    -- Status icon (alive/deceased)
+    local statusIcon = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
     if member.isAlive then
         statusIcon:SetText("✓")
         statusIcon:SetTextColor(BP_Color(BLOODPACT_COLORS.ALIVE))
@@ -229,42 +259,60 @@ function BloodPact_PactDashboard:CreateMemberRow(parent, accountID, member, yOff
         statusIcon:SetText("☠")
         statusIcon:SetTextColor(BP_Color(BLOODPACT_COLORS.DECEASED))
     end
-    statusIcon:SetPoint("LEFT", row, "LEFT", 4, 0)
+    statusIcon:SetPoint("TOPLEFT", card, "TOPLEFT", 6, -6)
 
-    -- Member name
-    local nameText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    nameText:SetText(accountID)
-    nameText:SetPoint("LEFT", row, "LEFT", 22, 0)
+    -- Character name + class
+    local nameText = BP_CreateFontString(card, BP_FONT_SIZE_MEDIUM)
+    nameText:SetText(BP_SanitizeText(charName))
+    nameText:SetPoint("LEFT", statusIcon, "RIGHT", 4, 0)
+    nameText:SetTextColor(1, 1, 1, 1)
+
+    local classText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    classText:SetText(class ~= "" and class or "?")
+    classText:SetPoint("LEFT", nameText, "RIGHT", 6, 0)
+    if BLOODPACT_CLASS_COLORS and class and BLOODPACT_CLASS_COLORS[string.upper(class)] then
+        local c = BLOODPACT_CLASS_COLORS[string.upper(class)]
+        classText:SetTextColor(c[1], c[2], c[3], 1)
+    else
+        classText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+    end
 
     -- Level
-    local levelText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    levelText:SetText("Lvl " .. tostring(member.highestLevel or 0))
-    levelText:SetPoint("LEFT", row, "LEFT", 150, 0)
-    if member.isAlive then
-        levelText:SetTextColor(BP_Color(BLOODPACT_COLORS.ALIVE))
-    else
-        levelText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
-    end
+    local levelText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    levelText:SetText("Lvl " .. tostring(level))
+    levelText:SetPoint("TOPLEFT", statusIcon, "BOTTOMLEFT", 0, -4)
+    levelText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_PRIMARY))
 
-    -- Death count (from actual stored data, not member.deathCount)
+    -- Gold
+    local goldText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    goldText:SetText(BloodPact_DeathDataManager:FormatCopper(copper))
+    goldText:SetPoint("LEFT", levelText, "RIGHT", 12, 0)
+    goldText:SetTextColor(1.0, 0.84, 0.0, 1)
+
+    -- Professions
+    local profStr = ""
+    if prof1 ~= "" and prof1Lvl > 0 then
+        profStr = prof1 .. " " .. tostring(prof1Lvl)
+    end
+    if prof2 ~= "" and prof2Lvl > 0 then
+        if profStr ~= "" then profStr = profStr .. " | " end
+        profStr = profStr .. prof2 .. " " .. tostring(prof2Lvl)
+    end
+    if profStr == "" then profStr = "—" end
+
+    local profText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    profText:SetText(profStr)
+    profText:SetPoint("TOPLEFT", levelText, "BOTTOMLEFT", 0, -4)
+    profText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+    -- Death count
     local deathCount = BloodPact_DeathDataManager:GetDeathCountForMember(accountID)
-    local deathText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    deathText:SetText("(" .. tostring(deathCount) .. " deaths)")
-    deathText:SetPoint("LEFT", row, "LEFT", 210, 0)
+    local deathText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    deathText:SetText(tostring(deathCount) .. " death(s)")
+    deathText:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -6, 6)
     deathText:SetTextColor(0.8, 0.3, 0.3, 1)
 
-    -- Status label
-    local statusLabel = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    if member.isAlive then
-        statusLabel:SetText("ALIVE")
-        statusLabel:SetTextColor(BP_Color(BLOODPACT_COLORS.ALIVE))
-    else
-        statusLabel:SetText("DECEASED")
-        statusLabel:SetTextColor(1.0, 0.2, 0.2, 1)
-    end
-    statusLabel:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-
-    return row
+    return card
 end
 
 -- ============================================================

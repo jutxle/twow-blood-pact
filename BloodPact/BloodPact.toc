@@ -12,6 +12,7 @@ Utils\RateLimiter.lua
 Config.lua
 Data\AccountIdentity.lua
 Data\CharacterIdentity.lua
+Data\RosterDataManager.lua
 Data\SavedVariablesHandler.lua
 Data\DeathDataManager.lua
 CombatLog\DataExtractor.lua

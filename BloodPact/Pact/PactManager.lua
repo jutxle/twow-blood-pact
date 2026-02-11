@@ -57,7 +57,8 @@ function BloodPact_PactManager:CreatePact(pactName)
                 joinedTimestamp = now
             }
         },
-        syncedDeaths = {}
+        syncedDeaths    = {},
+        rosterSnapshots = {}
     }
 
     BloodPact_Logger:Print("Blood Pact created: " .. pactName)
@@ -154,7 +155,8 @@ function BloodPact_PactManager:OnJoinResponse(data)
                 joinedTimestamp = now
             }
         },
-        syncedDeaths = {}
+        syncedDeaths     = {},
+        rosterSnapshots  = {}
     }
 
     BloodPact_Logger:Print("Successfully joined: " .. data.pactName)
@@ -163,8 +165,9 @@ function BloodPact_PactManager:OnJoinResponse(data)
     -- Request full data sync from the responder
     BloodPact_SyncEngine:SendSyncRequest()
 
-    -- Share our own death history with pact members
+    -- Share our own death history and roster snapshot with pact members
     BloodPact_SyncEngine:BroadcastAllDeaths()
+    BloodPact_SyncEngine:BroadcastRosterSnapshot()
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
@@ -262,6 +265,30 @@ end
 function BloodPact_PactManager:OnSyncRequest(senderID)
     if not self:IsInPact() then return end
     BloodPact_SyncEngine:BroadcastAllDeaths()
+    BloodPact_SyncEngine:BroadcastRosterSnapshot()
+end
+
+-- Called when a roster snapshot arrives from a pact member
+function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
+    if not self:IsInPact() then return end
+    if not BloodPactAccountDB.pact then return end
+    if not BloodPactAccountDB.pact.rosterSnapshots then
+        BloodPactAccountDB.pact.rosterSnapshots = {}
+    end
+    BloodPactAccountDB.pact.rosterSnapshots[senderID] = {
+        characterName   = data.characterName,
+        class           = data.class,
+        level           = data.level,
+        copper          = data.copper,
+        profession1     = data.profession1,
+        profession1Level = data.profession1Level,
+        profession2     = data.profession2,
+        profession2Level = data.profession2Level,
+        timestamp       = data.timestamp
+    }
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
 end
 
 -- Called when ownership transfer arrives

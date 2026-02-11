@@ -37,6 +37,8 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleWipe()
     elseif string.sub(input, 1, 6) == "export" then
         BloodPact_Logger:Print("Export functionality not yet implemented.")
+    elseif input == "setmain" then
+        self:HandleSetMain()
     elseif input == "status" then
         self:ShowStatus()
     elseif input == "help" then
@@ -107,6 +109,24 @@ function BloodPact_CommandHandler:HandleCreate(name)
     BloodPact_PactManager:CreatePact(name)
 end
 
+function BloodPact_CommandHandler:HandleSetMain()
+    local charName = UnitName("player")
+    if not charName then
+        BloodPact_Logger:Print("Could not get character name.")
+        return
+    end
+    if BloodPact_RosterDataManager then
+        BloodPact_RosterDataManager:SetMainCharacter(charName)
+        BloodPact_Logger:Print("Main character set to: " .. charName)
+        if BloodPact_PactManager:IsInPact() then
+            BloodPact_SyncEngine:BroadcastRosterSnapshot()
+        end
+        if BloodPact_Settings and BloodPact_Settings.Refresh then
+            BloodPact_Settings:Refresh()
+        end
+    end
+end
+
 function BloodPact_CommandHandler:HandleJoin(code)
     if not code or string.len(code) == 0 then
         BloodPact_Logger:Print("Usage: /bloodpact join <8-character code>")
@@ -162,6 +182,7 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact toggle   - Toggle window visibility")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact create <name> - Create a new Blood Pact")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact join <code> - Join a Blood Pact using a join code")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact setmain  - Set current character as main hardcore (for roster)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact wipe     - Wipe all death data (requires confirmation)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact help     - Show this help message")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp errors        - Show recent errors from persistent log")

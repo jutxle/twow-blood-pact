@@ -122,6 +122,19 @@ BLOODPACT_COLORS = {
     QUALITY_LEGENDARY = {1.0, 0.5, 0.0},
 }
 
+-- WoW class colors (English class name -> RGB)
+BLOODPACT_CLASS_COLORS = {
+    WARRIOR = {0.78, 0.61, 0.43},
+    PALADIN = {0.96, 0.55, 0.73},
+    HUNTER  = {0.67, 0.83, 0.45},
+    ROGUE   = {1.0, 0.96, 0.41},
+    PRIEST  = {1.0, 1.0, 1.0},
+    SHAMAN  = {0.0, 0.44, 0.87},
+    MAGE    = {0.41, 0.8, 0.94},
+    WARLOCK = {0.58, 0.51, 0.79},
+    DRUID   = {1.0, 0.49, 0.04},
+}
+
 -- Per-player timeline color cycling
 BLOODPACT_PLAYER_COLORS = {
     {1.0, 0.5, 0.5},

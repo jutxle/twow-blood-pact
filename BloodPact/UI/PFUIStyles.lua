@@ -15,21 +15,26 @@ BP_FONT_SIZE_LARGE  = 14
 BP_FONT_SIZE_MEDIUM = 11
 BP_FONT_SIZE_SMALL  = 9
 
+-- Default WoW backdrop (solid background) - used when PFUI panel causes transparency
+local DEFAULT_BG = "Interface\\Tooltips\\UI-Tooltip-Background"
+
 -- Backdrop configuration
 if PFUI_PRESENT then
+    -- PFUI panel texture can appear fully transparent with some themes.
+    -- Use default WoW backdrop for guaranteed visible background.
     BP_BACKDROP = {
-        bgFile   = "Interface\\AddOns\\pfUI\\img\\panel",
+        bgFile   = DEFAULT_BG,
         edgeFile = "Interface\\AddOns\\pfUI\\img\\border",
-        tile     = false,
-        tileSize = 8,
+        tile     = true,
+        tileSize = 16,
         edgeSize = 8,
         insets   = {left = 3, right = 3, top = 3, bottom = 3}
     }
     BP_BACKDROP_DARK = {
-        bgFile   = "Interface\\AddOns\\pfUI\\img\\panel",
+        bgFile   = DEFAULT_BG,
         edgeFile = "Interface\\AddOns\\pfUI\\img\\border",
-        tile     = false,
-        tileSize = 8,
+        tile     = true,
+        tileSize = 16,
         edgeSize = 8,
         insets   = {left = 3, right = 3, top = 3, bottom = 3}
     }

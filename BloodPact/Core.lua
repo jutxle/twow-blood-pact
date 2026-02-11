@@ -78,6 +78,10 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
     elseif event == "PLAYER_LEVEL_UP" then
         -- a1 = new level
         BloodPact_UpdateCharacterLevel()
+        -- Broadcast roster when we level (so pact sees updated level)
+        if BloodPact_PactManager:IsInPact() and BloodPact_RosterDataManager and BloodPact_RosterDataManager:IsCurrentCharacterMain() then
+            BloodPact_SyncEngine:BroadcastRosterSnapshot()
+        end
     end
 end
 
@@ -122,6 +126,7 @@ BloodPactFrame:SetScript("OnUpdate", function()
         if BP_Timers.syncRequest >= BLOODPACT_SYNC_REQUEST_DELAY then
             BP_LoginSyncPending = false
             BloodPact_SyncEngine:SendSyncRequest()
+            BloodPact_SyncEngine:BroadcastRosterSnapshot()
         end
     end
 

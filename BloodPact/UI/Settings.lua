@@ -27,9 +27,43 @@ function BloodPact_Settings:Create(parent)
         panel.createdLine:SetPoint("TOPLEFT", panel.accountIDLine, "BOTTOMLEFT", 0, -4)
         panel.createdLine:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
 
+        -- Main character selector
+        local mainLabel = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        mainLabel:SetPoint("TOPLEFT", panel.createdLine, "BOTTOMLEFT", 0, -8)
+        mainLabel:SetText("Main hardcore character:")
+        mainLabel:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+        panel.mainCharText = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        panel.mainCharText:SetPoint("LEFT", mainLabel, "RIGHT", 6, 0)
+        panel.mainCharText:SetTextColor(1, 1, 1, 1)
+
+        local setMainBtn = BP_CreateButton(section, "Set Current", 70, 18)
+        setMainBtn:SetPoint("LEFT", panel.mainCharText, "RIGHT", 8, 0)
+        setMainBtn:SetScript("OnClick", function()
+            local charName = UnitName("player")
+            if charName and BloodPact_RosterDataManager then
+                BloodPact_RosterDataManager:SetMainCharacter(charName)
+                BloodPact_Settings:Refresh()
+                BloodPact_Logger:Print("Main character set to: " .. charName)
+                if BloodPact_PactManager:IsInPact() then
+                    BloodPact_SyncEngine:BroadcastRosterSnapshot()
+                end
+            end
+        end)
+
+        local clearMainBtn = BP_CreateButton(section, "Clear", 50, 18)
+        clearMainBtn:SetPoint("LEFT", setMainBtn, "RIGHT", 4, 0)
+        clearMainBtn:SetScript("OnClick", function()
+            if BloodPact_RosterDataManager then
+                BloodPact_RosterDataManager:SetMainCharacter(nil)
+                BloodPact_Settings:Refresh()
+                BloodPact_Logger:Print("Main character cleared. Current character will be used.")
+            end
+        end)
+
         -- Hardcore manual flag checkbox area
         local hcLabel = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
-        hcLabel:SetPoint("TOPLEFT", panel.createdLine, "BOTTOMLEFT", 0, -8)
+        hcLabel:SetPoint("TOPLEFT", mainLabel, "BOTTOMLEFT", 0, -8)
         hcLabel:SetText("[ ] I am playing hardcore (manual flag)")
         hcLabel:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
         panel.hcFlagLabel = hcLabel
@@ -45,7 +79,7 @@ function BloodPact_Settings:Create(parent)
             end
         end)
 
-        section:SetHeight(90)
+        section:SetHeight(130)
     end)
 
     -- Blood Pact Membership section
@@ -185,6 +219,17 @@ function BloodPact_Settings:Refresh()
     local accountID = BloodPact_AccountIdentity:GetAccountID() or "Unknown"
     if panel.accountIDLine then
         panel.accountIDLine:SetText("Account ID: " .. accountID)
+    end
+
+    -- Main character display
+    if panel.mainCharText and BloodPact_RosterDataManager then
+        local main = BloodPact_RosterDataManager:GetMainCharacter()
+        local current = UnitName("player")
+        if main then
+            panel.mainCharText:SetText(main .. (current == main and " (current)" or ""))
+        else
+            panel.mainCharText:SetText((current or "?") .. " (current)")
+        end
     end
     if panel.createdLine and BloodPactAccountDB and BloodPactAccountDB.accountCreatedTimestamp then
         panel.createdLine:SetText("Created: " .. date("%Y-%m-%d %H:%M:%S", BloodPactAccountDB.accountCreatedTimestamp))

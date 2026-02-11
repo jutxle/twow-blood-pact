@@ -43,6 +43,9 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     if BloodPactAccountDB.config.windowAlpha == nil then
         BloodPactAccountDB.config.windowAlpha = 1.0
     end
+    if BloodPactAccountDB.config.mainCharacter == nil then
+        BloodPactAccountDB.config.mainCharacter = nil  -- explicitly nil = use current char
+    end
 
     -- Ensure debug storage exists
     if not BloodPactAccountDB.debug then
@@ -92,6 +95,7 @@ function BloodPact_SavedVariablesHandler:ValidateData()
             -- Ensure sub-tables exist
             if not pact.members then pact.members = {} end
             if not pact.syncedDeaths then pact.syncedDeaths = {} end
+            if not pact.rosterSnapshots then pact.rosterSnapshots = {} end
         end
     end
 end

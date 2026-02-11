@@ -65,6 +65,20 @@ function BloodPact_SyncEngine:BroadcastAllDeaths()
     end
 end
 
+-- Broadcast roster snapshot (character info for pact roster display)
+function BloodPact_SyncEngine:BroadcastRosterSnapshot()
+    if not BloodPact_PactManager:IsInPact() then return end
+    if not BloodPact_RosterDataManager then return end
+    local selfID   = BloodPact_AccountIdentity:GetAccountID()
+    local pactCode = BloodPact_PactManager:GetPactCode()
+    local snapshot = BloodPact_RosterDataManager:GetCurrentSnapshot()
+    if not snapshot then return end
+    -- Only broadcast when on main character (or main not set)
+    if not BloodPact_RosterDataManager:IsCurrentCharacterMain() then return end
+    local msg = BloodPact_Serialization:SerializeRosterSnapshot(selfID, pactCode, snapshot)
+    if msg then self:QueueMessage(msg) end
+end
+
 -- Send a sync request (asking others to send us their deaths)
 function BloodPact_SyncEngine:SendSyncRequest()
     if not BloodPact_PactManager:IsInPact() then return end
@@ -187,6 +201,8 @@ function BloodPact_SyncEngine:OnAddonMessage(msg, channel, sender)
         self:HandleOwnershipTransfer(msg, sender)
     elseif msgType == "SR" then
         self:HandleSyncRequest(msg, sender)
+    elseif msgType == "RS" then
+        self:HandleRosterSnapshot(msg, sender)
     elseif msgType == "CK" then
         self:HandleChunk(msg, sender)
     end
@@ -234,6 +250,13 @@ function BloodPact_SyncEngine:HandleSyncRequest(msg, sender)
     if not self:IsMessageForOurPact(pactCode) then return end
     if senderID == BloodPact_AccountIdentity:GetAccountID() then return end
     BloodPact_PactManager:OnSyncRequest(senderID)
+end
+
+function BloodPact_SyncEngine:HandleRosterSnapshot(msg, sender)
+    local data = BloodPact_Serialization:DeserializeRosterSnapshot(msg)
+    if not data then return end
+    if not self:IsMessageForOurPact(data.pactCode) then return end
+    BloodPact_PactManager:OnRosterSnapshot(data.senderID, data)
 end
 
 function BloodPact_SyncEngine:HandleChunk(msg, sender)
