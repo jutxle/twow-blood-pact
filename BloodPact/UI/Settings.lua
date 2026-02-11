@@ -93,6 +93,32 @@ function BloodPact_Settings:Create(parent)
         section:SetHeight(130)
     end)
 
+    -- UI Preferences section
+    yOffset = self:CreateSection(panel, "UI Preferences", yOffset, function(section)
+        local alphaLabel = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        alphaLabel:SetText("Window transparency:")
+        alphaLabel:SetPoint("TOPLEFT", section, "TOPLEFT", 8, -20)
+        alphaLabel:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+        panel.alphaValueText = BP_CreateFontString(section, BP_FONT_SIZE_SMALL)
+        panel.alphaValueText:SetPoint("LEFT", alphaLabel, "RIGHT", 8, 0)
+        panel.alphaValueText:SetTextColor(1, 1, 1, 1)
+
+        local minusBtn = BP_CreateButton(section, "-", 28, 20)
+        minusBtn:SetPoint("LEFT", panel.alphaValueText, "RIGHT", 8, 0)
+        minusBtn:SetScript("OnClick", function()
+            self:AdjustTransparency(-0.05)
+        end)
+
+        local plusBtn = BP_CreateButton(section, "+", 28, 20)
+        plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 4, 0)
+        plusBtn:SetScript("OnClick", function()
+            self:AdjustTransparency(0.05)
+        end)
+
+        section:SetHeight(55)
+    end)
+
     -- Data Management section
     yOffset = self:CreateSection(panel, "Data Management", yOffset, function(section)
         local wipeBtn = BP_CreateButton(section, "Wipe All Data", 110, 22)
@@ -134,6 +160,21 @@ function BloodPact_Settings:CreateSection(parent, title, yOffset, contentFunc)
 end
 
 -- ============================================================
+-- Transparency
+-- ============================================================
+
+function BloodPact_Settings:AdjustTransparency(delta)
+    if not BloodPactAccountDB or not BloodPactAccountDB.config then return end
+    local alpha = BloodPactAccountDB.config.windowAlpha or 1.0
+    alpha = alpha + delta
+    if alpha < 0.5 then alpha = 0.5 end
+    if alpha > 1.0 then alpha = 1.0 end
+    BloodPactAccountDB.config.windowAlpha = alpha
+    BloodPact_MainFrame:ApplyTransparency()
+    self:Refresh()
+end
+
+-- ============================================================
 -- Refresh
 -- ============================================================
 
@@ -159,6 +200,12 @@ function BloodPact_Settings:Refresh()
             panel.hcFlagLabel:SetText("[ ] I am playing hardcore (manual flag)")
             panel.hcFlagLabel:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
         end
+    end
+
+    -- Transparency display
+    if panel.alphaValueText then
+        local alpha = (BloodPactAccountDB and BloodPactAccountDB.config and BloodPactAccountDB.config.windowAlpha) or 1.0
+        panel.alphaValueText:SetText(string.format("%d%%", math.floor(alpha * 100 + 0.5)))
     end
 
     -- Pact status

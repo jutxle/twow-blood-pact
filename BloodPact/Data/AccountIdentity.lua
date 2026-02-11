@@ -31,7 +31,8 @@ function BloodPact_AccountIdentity:Initialize()
         showTimeline        = true,
         manualHardcoreFlag  = false,
         windowX             = nil,
-        windowY             = nil
+        windowY             = nil,
+        windowAlpha         = 1.0
     }
     BloodPactAccountDB.version = BLOODPACT_SCHEMA_VERSION
 

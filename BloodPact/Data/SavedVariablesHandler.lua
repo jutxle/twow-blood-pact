@@ -36,8 +36,12 @@ function BloodPact_SavedVariablesHandler:ValidateData()
             showTimeline       = true,
             manualHardcoreFlag = true,
             windowX            = nil,
-            windowY            = nil
+            windowY            = nil,
+            windowAlpha        = 1.0
         }
+    end
+    if BloodPactAccountDB.config.windowAlpha == nil then
+        BloodPactAccountDB.config.windowAlpha = 1.0
     end
 
     -- Ensure debug storage exists

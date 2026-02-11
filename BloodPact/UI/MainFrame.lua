@@ -69,6 +69,7 @@ function BloodPact_MainFrame:Create()
     -- Start hidden
     frame:Hide()
 
+    self:ApplyTransparency()
     BloodPact_MainFrame.frame = frame
 end
 
@@ -255,8 +256,15 @@ function BloodPact_MainFrame:Show()
         frame.accountIDText:SetText("Account: " .. (accountID or "Unknown"))
     end
 
+    self:ApplyTransparency()
     frame:Show()
     self:SwitchTab(activeTab)
+end
+
+function BloodPact_MainFrame:ApplyTransparency()
+    if not frame then return end
+    local alpha = BloodPactAccountDB and BloodPactAccountDB.config and BloodPactAccountDB.config.windowAlpha
+    frame:SetAlpha(alpha or 1.0)
 end
 
 function BloodPact_MainFrame:Hide()
