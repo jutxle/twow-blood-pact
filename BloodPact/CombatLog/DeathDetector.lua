@@ -12,11 +12,12 @@ BloodPact_DeathDetector = {
     STATE_SUSPECTED  = 1,
     STATE_COLLECTING = 2,
 
-    state            = 0,  -- current state (IDLE)
-    suspectTimer     = 0,  -- accumulates elapsed time in SUSPECTED state
-    cachedKillerName = nil,
+    state             = 0,  -- current state (IDLE)
+    suspectTimer      = 0,  -- accumulates elapsed time in SUSPECTED state
+    cachedKillerName  = nil,
     cachedKillerLevel = nil,
-    cachedKillerType  = nil
+    cachedKillerType  = nil,
+    cachedKillerAbility = nil
 }
 
 -- Tick called from Core.lua OnUpdate accumulator
@@ -38,19 +39,24 @@ function BloodPact_DeathDetector:OnCombatDeathMessage(msg)
     if BloodPact_Parser:IsPlayerDeathMessage(msg) then
         self.state        = self.STATE_SUSPECTED
         self.suspectTimer = 0
-        -- Cache the last known attacker
-        self.cachedKillerName  = BloodPact_Parser:GetLastAttacker()
+        -- Prefer killer from death message (most reliable); fallback to last attacker
+        self.cachedKillerName = BloodPact_Parser:ParseKillerFromDeathMessage(msg)
+        local lastName, lastAbility = BloodPact_Parser:GetLastAttacker()
+        if not self.cachedKillerName then
+            self.cachedKillerName = lastName
+        end
+        self.cachedKillerAbility = lastAbility
         self.cachedKillerLevel = nil
         self.cachedKillerType  = self.cachedKillerName and "NPC" or "Unknown"
         BloodPact_Logger:Info("Death suspected from combat log.")
     end
 end
 
--- Called when CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS fires (attacker tracking)
+-- Called when CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS / CHAT_MSG_SPELL_* fires (attacker tracking)
 function BloodPact_DeathDetector:OnCreatureHitsPlayer(msg)
-    local attacker = BloodPact_Parser:ParseAttackerFromHitMessage(msg)
+    local attacker, ability = BloodPact_Parser:ParseAttackerFromHitMessage(msg)
     if attacker then
-        BloodPact_Parser:RecordAttacker(attacker)
+        BloodPact_Parser:RecordAttacker(attacker, ability)
     end
 end
 
@@ -86,7 +92,8 @@ function BloodPact_DeathDetector:ConfirmAndLogDeath()
     local deathRecord = BloodPact_DataExtractor:BuildDeathRecord(
         self.cachedKillerName,
         self.cachedKillerLevel,
-        self.cachedKillerType
+        self.cachedKillerType,
+        self.cachedKillerAbility
     )
 
     -- Save to local database
@@ -134,10 +141,11 @@ end
 
 -- Reset state machine to IDLE
 function BloodPact_DeathDetector:Reset()
-    self.state             = self.STATE_IDLE
-    self.suspectTimer      = 0
-    self.cachedKillerName  = nil
-    self.cachedKillerLevel = nil
-    self.cachedKillerType  = nil
+    self.state               = self.STATE_IDLE
+    self.suspectTimer        = 0
+    self.cachedKillerName    = nil
+    self.cachedKillerLevel   = nil
+    self.cachedKillerType    = nil
+    self.cachedKillerAbility = nil
     BloodPact_Parser:ClearAttackerBuffer()
 end

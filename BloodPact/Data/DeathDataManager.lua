@@ -346,6 +346,53 @@ function BloodPact_DeathDataManager:GetDeathCountForMember(accountID)
     return count
 end
 
+-- Format death for timeline display with dark/moody phrasing
+-- Returns string like "Bob (Lvl 10) was slain brutally by Stitches's Cleave"
+-- ownerPrefix: optional, e.g. "AccountName's " for pact timeline
+function BloodPact_DeathDataManager:FormatDeathMessage(death, ownerPrefix)
+    local charName = death.characterName or "?"
+    local level = death.level or 0
+    local levelStr = (level > 0) and (" (Lvl " .. tostring(level) .. ")") or ""
+    local killer = death.killerName or "Unknown"
+    local ability = death.killerAbility
+
+    if death.killerType == "Environment" or not death.killerName or death.killerName == "Environment" then
+        local envPhrases = {
+            " met a grim end.",
+            " fell to the darkness.",
+            " was consumed by the void.",
+            " perished to unforgiving fate.",
+        }
+        local idx = math.mod(math.floor((death.timestamp or 0) / 60), table.getn(envPhrases)) + 1
+        local msg = charName .. levelStr .. envPhrases[idx]
+        if ownerPrefix and string.len(ownerPrefix) > 0 then
+            msg = ownerPrefix .. msg
+        end
+        return msg
+    end
+
+    local abilityStr = ""
+    if ability and string.len(ability) > 0 then
+        abilityStr = "'s " .. ability
+    end
+
+    local phrases = {
+        " was slain brutally by ",
+        " fell before ",
+        " was cut down by ",
+        " was crushed by ",
+        " met their end by ",
+        " was destroyed by ",
+        " was obliterated by ",
+    }
+    local idx = math.mod(math.floor((death.timestamp or 0) / 60), table.getn(phrases)) + 1
+    local msg = charName .. levelStr .. phrases[idx] .. killer .. abilityStr
+    if ownerPrefix and string.len(ownerPrefix) > 0 then
+        msg = ownerPrefix .. msg
+    end
+    return msg
+end
+
 -- Convert copper amount to display string "Xg Ys Zc"
 function BloodPact_DeathDataManager:FormatCopper(copper)
     if not copper or copper == 0 then return "0c" end

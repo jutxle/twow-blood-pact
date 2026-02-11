@@ -55,8 +55,14 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
         BloodPact_DeathDetector:OnCreatureHitsPlayer(a1)
 
     elseif event == "CHAT_MSG_COMBAT_SELF_HITS" then
-        -- Spells/ability self-hits that might show attacker context
-        -- Less reliable but captures some cases
+        BloodPact_DeathDetector:OnCreatureHitsPlayer(a1)
+
+    elseif event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" then
+        -- Spell damage from creatures: "X's SpellName hits you for N"
+        BloodPact_DeathDetector:OnCreatureHitsPlayer(a1)
+
+    elseif event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" then
+        -- DoT damage: "You suffer N from X's SpellName"
         BloodPact_DeathDetector:OnCreatureHitsPlayer(a1)
 
     elseif event == "CHAT_MSG_ADDON" then
@@ -141,6 +147,8 @@ BloodPactFrame:RegisterEvent("PLAYER_LEVEL_UP")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS")
 BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
+BloodPactFrame:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE")
+BloodPactFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
 BloodPactFrame:RegisterEvent("CHAT_MSG_ADDON")
 
 -- ============================================================

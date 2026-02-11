@@ -207,22 +207,13 @@ function BloodPact_PactTimeline:CreateDeathRow(parent, death, yOffset)
     deathLabel:SetPoint("LEFT", ts, "RIGHT", 8, 0)
     deathLabel:SetTextColor(1.0, 0.2, 0.2, 1)
 
-    -- Owner attribution
+    -- Death message (owner + flavorful phrasing with killer/ability)
+    local ownerPrefix = BP_SanitizeText(death.ownerAccountID or "?") .. "'s "
+    local deathMsg = BloodPact_DeathDataManager:FormatDeathMessage(death, ownerPrefix)
     local ownerText = BP_CreateFontString(row, BP_FONT_SIZE_MEDIUM)
-    local ownerDisplay = BP_SanitizeText(death.ownerAccountID or "?") .. "'s " .. BP_SanitizeText(death.characterName or "?")
-    ownerText:SetText(ownerDisplay .. " (Lvl " .. tostring(death.level or 0) .. ")")
+    ownerText:SetText(BP_SanitizeText(deathMsg))
     ownerText:SetPoint("TOPLEFT", ts, "BOTTOMLEFT", 0, -4)
     ownerText:SetTextColor(r, g, b, 1)
-
-    -- Killer
-    local killer = BP_SanitizeText(death.killerName) or "Unknown"
-    if death.killerLevel and death.killerLevel > 0 then
-        killer = killer .. " (" .. tostring(death.killerLevel) .. ")"
-    end
-    local killerText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
-    killerText:SetText("killed by " .. killer)
-    killerText:SetPoint("TOPLEFT", ownerText, "BOTTOMLEFT", 0, -2)
-    killerText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     -- Location
     local locStr = BP_SanitizeText(death.zoneName) or "Unknown"
@@ -231,7 +222,7 @@ function BloodPact_PactTimeline:CreateDeathRow(parent, death, yOffset)
     end
     local locText = BP_CreateFontString(row, BP_FONT_SIZE_SMALL)
     locText:SetText("Location: " .. locStr)
-    locText:SetPoint("TOPLEFT", killerText, "BOTTOMLEFT", 0, -2)
+    locText:SetPoint("TOPLEFT", ownerText, "BOTTOMLEFT", 0, -2)
     locText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_DISABLED))
 
     return row

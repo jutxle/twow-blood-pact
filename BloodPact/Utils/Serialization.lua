@@ -89,7 +89,7 @@ end
 -- ============================================================
 -- Message Type: DEATH_ANNOUNCE
 -- Format: DA~senderAccountID~pactCode~charName~charInstanceID~level~timestamp~
---         zoneName~subZone~mapX~mapY~killerName~killerLevel~killerType~
+--         zoneName~subZone~mapX~mapY~killerName~killerLevel~killerType~killerAbility~
 --         copperAmount~race~class~totalXP~items
 -- ============================================================
 
@@ -109,6 +109,7 @@ function BloodPact_Serialization:SerializeDeathAnnounce(senderID, pactCode, reco
         Escape(record.killerName or "Unknown"),
         tostring(record.killerLevel or 0),
         Escape(record.killerType or "Unknown"),
+        Escape(record.killerAbility or ""),
         tostring(record.copperAmount or 0),
         Escape(record.race or ""),
         Escape(record.class or ""),
@@ -167,11 +168,20 @@ function BloodPact_Serialization:DeserializeDeathAnnounce(str)
     record.killerName    = Unescape(fields[levelIdx + 6])
     record.killerLevel   = tonumber(fields[levelIdx + 7]) or 0
     record.killerType    = Unescape(fields[levelIdx + 8])
-    record.copperAmount  = tonumber(fields[levelIdx + 9]) or 0
-    record.race          = Unescape(fields[levelIdx + 10])
-    record.class         = Unescape(fields[levelIdx + 11])
-    record.totalXP       = tonumber(fields[levelIdx + 12]) or 0
-    record.equippedItems = DecodeItems(fields[levelIdx + 13] or "")
+    -- killerAbility: new in v3 format (20+ fields)
+    local copperIdx = levelIdx + 9
+    if table.getn(fields) >= levelIdx + 14 then
+        record.killerAbility = Unescape(fields[levelIdx + 9] or "")
+        if record.killerAbility == "" then record.killerAbility = nil end
+        copperIdx = levelIdx + 10
+    else
+        record.killerAbility = nil
+    end
+    record.copperAmount  = tonumber(fields[copperIdx]) or 0
+    record.race          = Unescape(fields[copperIdx + 1])
+    record.class         = Unescape(fields[copperIdx + 2])
+    record.totalXP       = tonumber(fields[copperIdx + 3]) or 0
+    record.equippedItems = DecodeItems(fields[copperIdx + 4] or "")
     record.version       = BLOODPACT_SCHEMA_VERSION
     record.accountID     = senderID
 

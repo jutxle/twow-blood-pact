@@ -26,7 +26,7 @@ local SLOT_NAMES = {
 }
 
 -- Build a complete death record from cached killer data
-function BloodPact_DataExtractor:BuildDeathRecord(killerName, killerLevel, killerType)
+function BloodPact_DataExtractor:BuildDeathRecord(killerName, killerLevel, killerType, killerAbility)
     local record = {}
 
     -- Identifiers
@@ -61,12 +61,14 @@ function BloodPact_DataExtractor:BuildDeathRecord(killerName, killerLevel, kille
 
     -- Killer information
     if killerName then
-        record.killerName  = killerName
-        record.killerLevel = killerLevel or 0
-        record.killerType  = killerType or "NPC"
+        record.killerName     = killerName
+        record.killerLevel    = killerLevel or 0
+        record.killerType     = killerType or "NPC"
+        record.killerAbility  = killerAbility  -- Last spell/attack that caused death
     else
-        record.killerName = "Environment"
-        record.killerType = "Environment"
+        record.killerName    = "Environment"
+        record.killerType    = "Environment"
+        record.killerAbility = nil
     end
 
     -- Equipped rare+ items

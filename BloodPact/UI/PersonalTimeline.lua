@@ -228,13 +228,10 @@ function BloodPact_PersonalTimeline:CreateDeathRow(parent, death, yOffset)
     deathLabel:SetPoint("LEFT", ts, "RIGHT", 8, 0)
     deathLabel:SetTextColor(1.0, 0.2, 0.2, 1)
 
-    -- Main death info
-    local killer = BP_SanitizeText(death.killerName) or "Unknown"
-    if death.killerLevel and death.killerLevel > 0 then
-        killer = killer .. " (" .. tostring(death.killerLevel) .. ")"
-    end
+    -- Main death info (flavorful phrasing with killer/ability)
+    local deathMsg = BloodPact_DeathDataManager:FormatDeathMessage(death)
     local mainText = BP_CreateFontString(row, BP_FONT_SIZE_MEDIUM)
-    mainText:SetText(BP_SanitizeText(death.characterName or "?") .. " (Lvl " .. tostring(death.level or 0) .. ") killed by " .. killer)
+    mainText:SetText(BP_SanitizeText(deathMsg))
     mainText:SetPoint("TOPLEFT", ts, "BOTTOMLEFT", 0, -4)
     mainText:SetTextColor(1, 1, 1, 1)
 

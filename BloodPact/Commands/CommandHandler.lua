@@ -297,6 +297,7 @@ function BloodPact_CommandHandler:HandleSimDeath(rest)
         killerName    = killer,
         killerLevel   = math.random(math.max(1, level - 2), level + 5),
         killerType    = "NPC",
+        killerAbility = "Simulated Death",
         copperAmount  = math.random(100, 50000),
         race          = "Human",
         class         = "Warrior",
