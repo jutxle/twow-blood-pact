@@ -16,6 +16,9 @@ local BP_Timers = {
 
 local BP_LoginSyncPending = false
 local BP_JoinTimeoutActive = false
+local BP_ManualSyncPending = false
+local BP_ManualSyncResponders = {}
+local BP_ManualSyncTimer = 0
 local BP_LastUpdateTime = 0
 
 -- ============================================================
@@ -152,6 +155,22 @@ BloodPactFrame:SetScript("OnUpdate", function()
             BloodPact_PactManager:OnJoinTimeout()
         end
     end
+
+    -- Manual sync feedback (after delay, report how many members responded)
+    if BP_ManualSyncPending then
+        BP_ManualSyncTimer = BP_ManualSyncTimer + elapsed
+        if BP_ManualSyncTimer >= BLOODPACT_MANUAL_SYNC_FEEDBACK_DELAY then
+            BP_ManualSyncPending = false
+            local count = 0
+            for _ in pairs(BP_ManualSyncResponders) do count = count + 1 end
+            BP_ManualSyncResponders = {}
+            if count > 0 then
+                BloodPact_Logger:Print("Sync complete. Received data from " .. count .. " pact member(s).")
+            else
+                BloodPact_Logger:Print("No pact members responded. Make sure you're in the same guild/party and they're online.")
+            end
+        end
+    end
 end)
 
 -- ============================================================
@@ -217,6 +236,20 @@ end
 function BloodPact_CancelJoinTimeout()
     BP_JoinTimeoutActive = false
     BP_Timers.joinTimeout = 0
+end
+
+-- Start watching for manual sync responses (called from /bp sync)
+function BloodPact_StartManualSyncWatch()
+    BP_ManualSyncPending = true
+    BP_ManualSyncResponders = {}
+    BP_ManualSyncTimer = 0
+end
+
+-- Record that a pact member responded to our sync request
+function BloodPact_RecordSyncResponder(senderID)
+    if BP_ManualSyncPending and senderID and senderID ~= (BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetAccountID()) then
+        BP_ManualSyncResponders[senderID] = true
+    end
 end
 
 -- Update the current character's level in the characters tracking table

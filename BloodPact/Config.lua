@@ -20,6 +20,7 @@ BLOODPACT_SUSPECT_TIMER_INTERVAL = 0.1   -- OnUpdate tick for death detection ti
 BLOODPACT_JOIN_TIMEOUT    = 30           -- Seconds to wait for join response
 BLOODPACT_CHUNK_TIMEOUT   = 30           -- Seconds before incomplete chunk buffers expire
 BLOODPACT_SYNC_REQUEST_DELAY = 5         -- Seconds after login to send sync request
+BLOODPACT_MANUAL_SYNC_FEEDBACK_DELAY = 12 -- Seconds to wait before showing manual sync feedback
 
 -- UI
 BLOODPACT_WINDOW_WIDTH    = 600
