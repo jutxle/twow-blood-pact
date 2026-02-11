@@ -29,6 +29,9 @@ function BloodPact_MainFrame:Create()
     frame:SetFrameStrata("DIALOG")
     BP_ApplyBackdrop(frame, true)
 
+    -- Allow closing with Escape key
+    table.insert(UISpecialFrames, "BloodPactMainFrame")
+
     -- Only restore saved position if this character has logged in before.
     -- New characters start centered so the panel is always visible on first use.
     local charName = UnitName("player")

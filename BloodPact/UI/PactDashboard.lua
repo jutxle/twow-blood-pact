@@ -206,9 +206,9 @@ function BloodPact_PactDashboard:RefreshRosterCards()
     local rosterSnapshots = pact.rosterSnapshots or {}
     local selfID = BloodPact_AccountIdentity:GetAccountID()
 
-    -- Card dimensions: 2 columns
+    -- Card dimensions: 2 columns (height accommodates professions + talents)
     local cardW = 275
-    local cardH = 88
+    local cardH = 106
     local padX = 4
     local padY = 6
     local cols = 2
@@ -249,6 +249,7 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     local prof1Lvl = (snapshot and snapshot.profession1Level) or 0
     local prof2 = (snapshot and snapshot.profession2) or ""
     local prof2Lvl = (snapshot and snapshot.profession2Level) or 0
+    local talentTabs = (snapshot and snapshot.talentTabs) or {}
 
     -- Status icon (alive/deceased)
     local statusIcon = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
@@ -292,12 +293,12 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     goldText:SetPoint("LEFT", levelText, "RIGHT", 12, 0)
     goldText:SetTextColor(1.0, 0.84, 0.0, 1)
 
-    -- Professions
+    -- Professions (show name even if level is 0)
     local profStr = ""
-    if prof1 ~= "" and prof1Lvl > 0 then
+    if prof1 ~= "" then
         profStr = prof1 .. " " .. tostring(prof1Lvl)
     end
-    if prof2 ~= "" and prof2Lvl > 0 then
+    if prof2 ~= "" then
         if profStr ~= "" then profStr = profStr .. " | " end
         profStr = profStr .. prof2 .. " " .. tostring(prof2Lvl)
     end
@@ -307,6 +308,21 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     profText:SetText(profStr)
     profText:SetPoint("TOPLEFT", levelText, "BOTTOMLEFT", 0, -4)
     profText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+    -- Talents (all 3 trees with points spent: "Affliction 5 | Demonology 3 | Destruction 0")
+    local talentParts = {}
+    for _, tab in ipairs(talentTabs) do
+        local name = tab.name or ""
+        local pts = tab.pointsSpent or 0
+        table.insert(talentParts, name .. " " .. tostring(pts))
+    end
+    local talentStr = table.concat(talentParts, " | ")
+    if talentStr == "" then talentStr = "—" end
+
+    local talentText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+    talentText:SetText(talentStr)
+    talentText:SetPoint("TOPLEFT", profText, "BOTTOMLEFT", 0, -4)
+    talentText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     -- Death count
     local deathCount = BloodPact_DeathDataManager:GetDeathCountForMember(accountID)

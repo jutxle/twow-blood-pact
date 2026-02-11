@@ -290,6 +290,7 @@ function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
         profession1Level = data.profession1Level,
         profession2     = data.profession2,
         profession2Level = data.profession2Level,
+        talentTabs      = data.talentTabs or {},
         timestamp       = data.timestamp
     }
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then

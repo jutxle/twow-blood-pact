@@ -313,11 +313,14 @@ end
 
 -- ============================================================
 -- Message Type: ROSTER_SNAPSHOT
--- Format: RS~senderAccountID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~timestamp
+-- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp
+-- (talent fields optional for backward compatibility)
 -- ============================================================
 
 function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, snapshot)
     if not snapshot then return nil end
+    local tabs = snapshot.talentTabs or {}
+    local t1, t2, t3 = tabs[1], tabs[2], tabs[3]
     local parts = {
         "RS",
         Escape(senderID),
@@ -330,6 +333,12 @@ function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, sna
         tostring(snapshot.profession1Level or 0),
         Escape(snapshot.profession2 or ""),
         tostring(snapshot.profession2Level or 0),
+        Escape((t1 and t1.name) or ""),
+        tostring((t1 and t1.pointsSpent) or 0),
+        Escape((t2 and t2.name) or ""),
+        tostring((t2 and t2.pointsSpent) or 0),
+        Escape((t3 and t3.name) or ""),
+        tostring((t3 and t3.pointsSpent) or 0),
         tostring(snapshot.timestamp or 0)
     }
     return table.concat(parts, "~")
@@ -355,6 +364,14 @@ function BloodPact_Serialization:DeserializeRosterSnapshot(str)
     if table.getn(fields) < 12 then return nil end
     if fields[1] ~= "RS" then return nil end
 
+    local talentTabs = {}
+    if table.getn(fields) >= 18 then
+        table.insert(talentTabs, { name = Unescape(fields[12]), pointsSpent = tonumber(fields[13]) or 0 })
+        table.insert(talentTabs, { name = Unescape(fields[14]), pointsSpent = tonumber(fields[15]) or 0 })
+        table.insert(talentTabs, { name = Unescape(fields[16]), pointsSpent = tonumber(fields[17]) or 0 })
+    end
+    local timestampIdx = (table.getn(fields) >= 18) and 18 or 12
+
     return {
         senderID    = Unescape(fields[2]),
         pactCode    = Unescape(fields[3]),
@@ -366,7 +383,8 @@ function BloodPact_Serialization:DeserializeRosterSnapshot(str)
         profession1Level = tonumber(fields[9]) or 0,
         profession2 = Unescape(fields[10]),
         profession2Level = tonumber(fields[11]) or 0,
-        timestamp   = tonumber(fields[12]) or 0
+        talentTabs  = talentTabs,
+        timestamp   = tonumber(fields[timestampIdx]) or 0
     }
 end
 
