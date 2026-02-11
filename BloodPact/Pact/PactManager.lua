@@ -194,6 +194,24 @@ function BloodPact_PactManager:AddMember(accountID)
     }
 end
 
+-- Resolve display name or accountID to accountID (for kick command)
+function BloodPact_PactManager:ResolveMemberIdentifier(name)
+    if not name or not self:IsInPact() or not BloodPactAccountDB.pact.members then return nil end
+    -- Direct match on accountID
+    if BloodPactAccountDB.pact.members[name] then return name end
+    -- Try match by display name
+    local rosterSnapshots = BloodPactAccountDB.pact.rosterSnapshots or {}
+    for accountID, snapshot in pairs(rosterSnapshots) do
+        if snapshot.displayName and snapshot.displayName == name then return accountID end
+        if snapshot.characterName and snapshot.characterName == name then return accountID end
+    end
+    -- Self: check our display name
+    if BloodPact_AccountIdentity:GetDisplayName() == name then
+        return BloodPact_AccountIdentity:GetAccountID()
+    end
+    return nil
+end
+
 -- Remove a member from the pact (owner only). For debugging.
 function BloodPact_PactManager:KickMember(accountID)
     if not self:IsInPact() then return false end
@@ -244,7 +262,8 @@ function BloodPact_PactManager:OnMemberDeath(senderID, deathRecord)
     -- Notify player (sanitize dynamic data to avoid invalid escape codes)
     local safeName = string.gsub(tostring(deathRecord.characterName or "?"), "|", "")
     local safeZone = string.gsub(tostring(deathRecord.zoneName or "?"), "|", "")
-    local safeSender = string.gsub(tostring(senderID), "|", "")
+    local senderDisplay = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(senderID) or senderID
+    local safeSender = string.gsub(tostring(senderDisplay), "|", "")
     BloodPact_Logger:Print("[Pact] " .. safeSender .. "'s " ..
         safeName .. " (Lvl " .. tostring(deathRecord.level or 0) ..
         ") has fallen in " .. safeZone .. ".")
@@ -285,6 +304,7 @@ function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
     end
     BloodPactAccountDB.pact.rosterSnapshots[senderID] = {
         characterName   = data.characterName,
+        displayName     = data.displayName,
         class           = data.class,
         level           = data.level,
         copper          = data.copper,

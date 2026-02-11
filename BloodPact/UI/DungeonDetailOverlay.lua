@@ -16,7 +16,6 @@ function BloodPact_DungeonDetailOverlay:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-    panel:SetFrameLevel(10)
     panel:Hide()
 
     self:CreateHeader()
@@ -85,7 +84,7 @@ function BloodPact_DungeonDetailOverlay:ShowForMember(accountID)
         BloodPact_PactDashboard.panel:Hide()
     end
     -- Hide pact timeline if open
-    BloodPact_PactTimeline:Hide()
+    if BloodPact_PactTimeline and BloodPact_PactTimeline.Hide then BloodPact_PactTimeline:Hide() end
 
     panel:Show()
     self:Refresh()
@@ -114,8 +113,8 @@ function BloodPact_DungeonDetailOverlay:Refresh()
     end
     dungeonRows = {}
 
-    -- Get character name for display
-    local charName = self:GetMemberCharName(currentAccountID)
+    -- Get display name for header
+    local displayName = self:GetMemberDisplayName(currentAccountID)
 
     -- Get completions
     local completions = BloodPact_DungeonDataManager:GetMemberCompletions(currentAccountID)
@@ -127,7 +126,7 @@ function BloodPact_DungeonDetailOverlay:Refresh()
 
     -- Update header
     if panel.headerNameText then
-        panel.headerNameText:SetText(BP_SanitizeText(charName) .. "'s Dungeon Progress")
+        panel.headerNameText:SetText(BP_SanitizeText(displayName) .. "'s Dungeon Progress")
     end
     if panel.headerCountText then
         local pct = totalDungeons > 0 and math.floor((totalCompleted / totalDungeons) * 100) or 0
@@ -270,24 +269,12 @@ function BloodPact_DungeonDetailOverlay:GetDungeonsForGroup(groupKey)
     return result
 end
 
--- Get the character name for a pact member (from roster snapshot or fallback to accountID)
-function BloodPact_DungeonDetailOverlay:GetMemberCharName(accountID)
-    -- Own account
-    local selfID = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetAccountID()
-    if accountID == selfID then
-        local charName = UnitName("player")
-        if charName then return charName end
+-- Get the display name for a pact member (for UI headers)
+function BloodPact_DungeonDetailOverlay:GetMemberDisplayName(accountID)
+    if BloodPact_AccountIdentity and BloodPact_AccountIdentity.GetDisplayNameFor then
+        return BloodPact_AccountIdentity:GetDisplayNameFor(accountID)
     end
-
-    -- Check roster snapshots
-    if BloodPactAccountDB and BloodPactAccountDB.pact and BloodPactAccountDB.pact.rosterSnapshots then
-        local snapshot = BloodPactAccountDB.pact.rosterSnapshots[accountID]
-        if snapshot and snapshot.characterName and string.len(snapshot.characterName) > 0 then
-            return snapshot.characterName
-        end
-    end
-
-    return accountID
+    return accountID or "?"
 end
 
 -- ============================================================

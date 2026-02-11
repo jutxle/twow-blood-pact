@@ -14,7 +14,6 @@ function BloodPact_PersonalDashboard:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-    panel:SetFrameLevel(0)
     panel:Hide()
 
     self:CreateStatCards()
@@ -118,7 +117,11 @@ function BloodPact_PersonalDashboard:CreateActionButtons()
     btnTimeline:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 16, 8)
     btnTimeline:SetScript("OnClick", function()
         BloodPact_MainFrame:SwitchTab(1)  -- Switch to personal tab (timeline sub-view)
-        BloodPact_PersonalTimeline:Show()
+        if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Show then
+            BloodPact_PersonalTimeline:Show()
+        else
+            BloodPact_Logger:Print("Timeline not available. Try /reload - if it persists, the PersonalTimeline module failed to load.")
+        end
     end)
 
     panel.btnTimeline = btnTimeline
@@ -234,7 +237,9 @@ function BloodPact_PersonalDashboard:CreateCharRow(parent, summary, yOffset)
     local charName = summary.characterName
     local instanceID = summary.characterInstanceID
     viewBtn:SetScript("OnClick", function()
-        BloodPact_PersonalTimeline:ShowForCharacter(charName, instanceID)
+        if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.ShowForCharacter then
+            BloodPact_PersonalTimeline:ShowForCharacter(charName, instanceID)
+        end
     end)
 
     return row

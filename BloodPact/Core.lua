@@ -33,9 +33,13 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
         -- Initialize UI modules (deferred until data is available)
         BloodPact_MainFrame:Create()
         BloodPact_PersonalDashboard:Initialize()
-        BloodPact_PersonalTimeline:Initialize()
+        if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Initialize then
+            BloodPact_PersonalTimeline:Initialize()
+        end
         BloodPact_PactDashboard:Initialize()
-        BloodPact_PactTimeline:Initialize()
+        if BloodPact_PactTimeline and BloodPact_PactTimeline.Initialize then
+            BloodPact_PactTimeline:Initialize()
+        end
         if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Initialize then
             BloodPact_DungeonDetailOverlay:Initialize()
         end

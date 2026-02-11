@@ -32,7 +32,7 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleJoin(code)
     elseif input == "wipe" then
         BloodPact_Logger:Print("Type /bloodpact wipe confirm to permanently delete all death data.")
-        BloodPact_Logger:Print("Your account ID and pact membership will be preserved.")
+        BloodPact_Logger:Print("Your display name and pact membership will be preserved.")
     elseif input == "wipe confirm" then
         self:HandleWipe()
     elseif string.sub(input, 1, 6) == "export" then
@@ -41,6 +41,9 @@ function BloodPact_CommandHandler:HandleCommand(input)
         self:HandleSetMain()
     elseif input == "status" then
         self:ShowStatus()
+    elseif string.sub(input, 1, 8) == "setname " then
+        local name = string.sub(rawInput, 9)
+        self:HandleSetName(name)
     elseif input == "help" then
         self:ShowHelp()
     elseif input == "debug" then
@@ -67,6 +70,11 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif string.sub(input, 1, 5) == "kick " then
         local accountName = string.gsub(string.sub(rawInput, 6), "^%s*(.-)%s*$", "%1")
         self:HandleKick(accountName)
+    elseif input == "dungeondebug" then
+        self:HandleDungeonDebug()
+    elseif input == "simdungeon" or string.sub(input, 1, 11) == "simdungeon " then
+        local rest = string.sub(rawInput, 12)
+        self:HandleSimDungeon(rest)
     elseif input == "errors" then
         self:ShowErrors()
     elseif input == "clearerrors" then
@@ -154,10 +162,34 @@ function BloodPact_CommandHandler:HandleWipe()
     end
 end
 
+function BloodPact_CommandHandler:HandleSetName(name)
+    if not name or string.len(string.gsub(name, "^%s*(.-)%s*$", "%1")) == 0 then
+        BloodPact_Logger:Print("Usage: /bp setname <display name>")
+        BloodPact_Logger:Print("  Sets your display name (shown to pact members). Max 32 characters.")
+        return
+    end
+    if BloodPact_AccountIdentity:SetDisplayName(name) then
+        local displayName = BloodPact_AccountIdentity:GetDisplayName()
+        BloodPact_Logger:Print("Display name set to: " .. displayName)
+        if BloodPact_PactManager:IsInPact() then
+            BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
+            BloodPact_Logger:Print("Pact members will see your new name.")
+        end
+        if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+            BloodPact_MainFrame:Refresh()
+        end
+        if BloodPact_Settings and BloodPact_Settings.Refresh then
+            BloodPact_Settings:Refresh()
+        end
+    else
+        BloodPact_Logger:Print("Could not set display name.")
+    end
+end
+
 function BloodPact_CommandHandler:ShowStatus()
     BloodPact_Logger:Print("=== Blood Pact Status ===")
-    local accountID = BloodPact_AccountIdentity:GetAccountID() or "None"
-    BloodPact_Logger:Print("Account ID: " .. accountID)
+    local displayName = BloodPact_AccountIdentity:GetDisplayName() or "None"
+    BloodPact_Logger:Print("Display Name: " .. displayName)
     local deaths = BloodPact_DeathDataManager:GetTotalDeaths()
     BloodPact_Logger:Print("Total deaths tracked: " .. tostring(deaths))
     if BloodPact_PactManager:IsInPact() then
@@ -183,6 +215,7 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact create <name> - Create a new Blood Pact")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact join <code> - Join a Blood Pact using a join code")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact setmain  - Set current character as main hardcore (for roster)")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp setname <name> - Set your display name (shown in pact UI)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact wipe     - Wipe all death data (requires confirmation)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bloodpact help     - Show this help message")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp errors        - Show recent errors from persistent log")
@@ -191,7 +224,9 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bp dump          - Dump addon state to chat")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp profile       - Show/clear performance profiles")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp deletedeath <char> [n] - Delete death #n (debug, 1=most recent)")
-    DEFAULT_CHAT_FRAME:AddMessage("  /bp kick <account> - Kick member from pact (owner only, debug)")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp kick <name> - Kick member from pact (owner only, debug)")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp dungeondebug   - Dungeon tracking diagnostics")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp simdungeon <id> - Simulate dungeon completion (e.g. simdungeon deadmines)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp                 - Shortcut for /bloodpact")
 end
 
@@ -232,10 +267,11 @@ function BloodPact_CommandHandler:HandleDeleteDeath(rest)
     end
 end
 
--- /bp kick <accountName> - Kick a member from the pact (owner only, debug)
-function BloodPact_CommandHandler:HandleKick(accountName)
-    if not accountName or string.len(accountName) == 0 then
-        BloodPact_Logger:Print("Usage: /bp kick <accountName>")
+-- /bp kick <name> - Kick a member from the pact (owner only, debug). Accepts display name or account ID.
+function BloodPact_CommandHandler:HandleKick(nameInput)
+    if not nameInput or string.len(nameInput) == 0 then
+        BloodPact_Logger:Print("Usage: /bp kick <name>")
+        BloodPact_Logger:Print("  Use display name or account ID of the member to kick.")
         return
     end
 
@@ -249,13 +285,20 @@ function BloodPact_CommandHandler:HandleKick(accountName)
         return
     end
 
-    if BloodPact_PactManager:KickMember(accountName) then
-        BloodPact_Logger:Print("Kicked '" .. accountName .. "' from the pact.")
+    local accountID = BloodPact_PactManager:ResolveMemberIdentifier(nameInput)
+    if not accountID then
+        BloodPact_Logger:Print("Cannot find member '" .. nameInput .. "' (try display name or account ID).")
+        return
+    end
+
+    if BloodPact_PactManager:KickMember(accountID) then
+        local displayName = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(accountID) or accountID
+        BloodPact_Logger:Print("Kicked '" .. displayName .. "' from the pact.")
         if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
             BloodPact_MainFrame:Refresh()
         end
     else
-        BloodPact_Logger:Print("Cannot kick '" .. accountName .. "' (not in pact, or cannot kick yourself).")
+        BloodPact_Logger:Print("Cannot kick (cannot kick yourself).")
     end
 end
 
@@ -295,6 +338,107 @@ function BloodPact_CommandHandler:HandleProfile(sub)
         if not hasAny then BloodPact_Logger:Print("No profile data.") end
     else
         BloodPact_Logger:Print("Usage: /bp profile [show|clear]")
+    end
+end
+
+-- ============================================================
+-- Dungeon Tracking Diagnostics
+-- ============================================================
+
+-- /bp dungeondebug - Show dungeon tracking module status and diagnostics
+function BloodPact_CommandHandler:HandleDungeonDebug()
+    BloodPact_Logger:Print("=== Dungeon Tracking Debug ===")
+
+    -- Module existence
+    BloodPact_Logger:Print("DungeonTracker: " .. (BloodPact_DungeonTracker and "OK" or "NIL (file failed to load)"))
+    BloodPact_Logger:Print("DungeonDetailOverlay: " .. (BloodPact_DungeonDetailOverlay and "OK" or "NIL (file failed to load)"))
+    BloodPact_Logger:Print("DungeonDataManager: " .. (BloodPact_DungeonDataManager and "OK" or "NIL"))
+    BloodPact_Logger:Print("BLOODPACT_DUNGEON_DATABASE: " .. (BLOODPACT_DUNGEON_DATABASE and tostring(table.getn(BLOODPACT_DUNGEON_DATABASE)) .. " dungeons" or "NIL"))
+    BloodPact_Logger:Print("BLOODPACT_DUNGEON_GROUPS: " .. (BLOODPACT_DUNGEON_GROUPS and tostring(table.getn(BLOODPACT_DUNGEON_GROUPS)) .. " groups" or "NIL"))
+
+    -- Boss lookup (DungeonTracker builds this from database at init)
+    if BloodPact_DungeonTracker and BloodPact_DungeonTracker.GetBossLookupCount then
+        local count = BloodPact_DungeonTracker:GetBossLookupCount()
+        BloodPact_Logger:Print("Boss lookup entries: " .. tostring(count) .. (count == 0 and " (empty - check BLOODPACT_DUNGEON_DATABASE)" or ""))
+    end
+
+    -- Zone APIs (used for verification)
+    local zone1 = (GetRealZoneText and GetRealZoneText()) or "N/A"
+    local zone2 = (GetZoneText and GetZoneText()) or "N/A"
+    BloodPact_Logger:Print("Current zone - GetRealZoneText: '" .. zone1 .. "' | GetZoneText: '" .. zone2 .. "'")
+
+    -- Local completions count
+    local charName = UnitName("player")
+    local count = 0
+    if charName and BloodPactAccountDB and BloodPactAccountDB.dungeonCompletions then
+        local comps = BloodPactAccountDB.dungeonCompletions[charName]
+        if comps then for _ in pairs(comps) do count = count + 1 end end
+    end
+    BloodPact_Logger:Print("Your completions (this char): " .. tostring(count))
+
+    BloodPact_Logger:Print("Tip: Use /bp debug then kill a boss to see raw combat log format.")
+    BloodPact_Logger:Print("Tip: Use /bp simdungeon deadmines to test completion pipeline.")
+end
+
+-- /bp simdungeon <dungeonID> - Simulate a dungeon completion (bypasses combat log)
+function BloodPact_CommandHandler:HandleSimDungeon(rest)
+    if not rest or string.len(string.gsub(rest, "^%s*(.-)%s*$", "%1")) == 0 then
+        BloodPact_Logger:Print("Usage: /bp simdungeon <dungeonID>")
+        BloodPact_Logger:Print("Examples: deadmines, ragefire, wailing_caverns, sfk")
+        return
+    end
+
+    local dungeonID = string.gsub(rest, "^%s*(.-)%s*$", "%1")
+    local charName = UnitName("player")
+    if not charName then
+        BloodPact_Logger:Print("Could not get character name.")
+        return
+    end
+
+    if not BloodPactAccountDB then
+        BloodPact_Logger:Print("SavedVariables not loaded yet. Try again after login.")
+        return
+    end
+
+    local completion = {
+        dungeonID     = dungeonID,
+        timestamp     = time(),
+        characterName = charName,
+    }
+
+    -- Use DungeonDataManager if available, else fallback to direct DB write (when module fails to load)
+    local recorded = false
+    if BloodPact_DungeonDataManager and BloodPact_DungeonDataManager.RecordCompletion then
+        recorded = BloodPact_DungeonDataManager:RecordCompletion(completion)
+    else
+        -- Fallback: record directly (DungeonDataManager.lua may have failed to load)
+        if not BloodPactAccountDB.dungeonCompletions then
+            BloodPactAccountDB.dungeonCompletions = {}
+        end
+        if not BloodPactAccountDB.dungeonCompletions[charName] then
+            BloodPactAccountDB.dungeonCompletions[charName] = {}
+        end
+        if not BloodPactAccountDB.dungeonCompletions[charName][dungeonID] then
+            BloodPactAccountDB.dungeonCompletions[charName][dungeonID] = completion.timestamp
+            recorded = true
+        end
+    end
+
+    if not recorded then
+        BloodPact_Logger:Print("Already completed " .. dungeonID .. " on this character.")
+        return
+    end
+
+    BloodPact_Logger:Print("[SIM] " .. charName .. " completed " .. dungeonID .. "!")
+
+    -- Broadcast to pact if in one
+    if BloodPact_PactManager and BloodPact_PactManager:IsInPact() and BloodPact_SyncEngine then
+        BloodPact_SyncEngine:BroadcastDungeonCompletion(completion)
+        BloodPact_Logger:Print("[SIM] Broadcast to pact.")
+    end
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
     end
 end
 

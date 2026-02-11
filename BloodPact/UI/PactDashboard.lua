@@ -14,7 +14,6 @@ function BloodPact_PactDashboard:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-    panel:SetFrameLevel(0)
     panel:Hide()
 
     self:CreatePactHeader()
@@ -124,7 +123,11 @@ function BloodPact_PactDashboard:CreateActionButtons()
     local btnTimeline = BP_CreateButton(panel, "Pact Timeline", 100, 22)
     btnTimeline:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 8, 4)
     btnTimeline:SetScript("OnClick", function()
-        BloodPact_PactTimeline:Show()
+        if BloodPact_PactTimeline and BloodPact_PactTimeline.Show then
+            BloodPact_PactTimeline:Show()
+        else
+            BloodPact_Logger:Print("Pact Timeline not available. Try /reload - if it persists, the PactTimeline module failed to load.")
+        end
     end)
 end
 
@@ -207,9 +210,9 @@ function BloodPact_PactDashboard:RefreshRosterCards()
     local rosterSnapshots = pact.rosterSnapshots or {}
     local selfID = BloodPact_AccountIdentity:GetAccountID()
 
-    -- Card dimensions: 2 columns (height accommodates professions + talents)
+    -- Card dimensions: 2 columns (height accommodates display name + char/class + level + professions + talents)
     local cardW = 275
-    local cardH = 106
+    local cardH = 122
     local padX = 4
     local padY = 6
     local cols = 2
@@ -242,7 +245,9 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
 
     BP_ApplyPanelBackdrop(card)
 
-    local charName = (snapshot and snapshot.characterName and snapshot.characterName ~= "") and snapshot.characterName or accountID
+    -- Use display name for UI; fallback: roster character name, then accountID
+    local displayName = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(accountID) or accountID
+    local charName = displayName
     local class = (snapshot and snapshot.class) or ""
     local level = (snapshot and snapshot.level) or member.highestLevel or 0
     local copper = (snapshot and snapshot.copper) or 0

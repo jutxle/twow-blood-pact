@@ -24,6 +24,13 @@ function BloodPact_DungeonTracker:Initialize()
     end
 end
 
+-- Debug: return boss lookup count (for /bp dungeondebug)
+function BloodPact_DungeonTracker:GetBossLookupCount()
+    local n = 0
+    for _ in pairs(bossLookup) do n = n + 1 end
+    return n
+end
+
 -- ============================================================
 -- Boss Kill Detection
 -- ============================================================
@@ -32,17 +39,27 @@ end
 function BloodPact_DungeonTracker:OnCombatDeathMessage(msg)
     if not msg then return end
 
+    -- Debug: log raw message format when debug logging enabled (helps verify combat log format)
+    if BloodPact_Logger and BloodPact_Logger.currentLevel == BloodPact_Logger.LEVEL.DEBUG then
+        BloodPact_Logger:Debug("[DungeonTracker] CHAT_MSG_COMBAT_HOSTILE_DEATH: " .. tostring(msg), "DungeonTracker")
+    end
+
     -- Step 1: Extract the dead entity name
     local deadName = self:ParseDeadEntityName(msg)
     if not deadName then return end
 
     -- Step 2: Check if the dead entity is a known final boss
     local dungeon = bossLookup[string.lower(deadName)]
+    if BloodPact_Logger and BloodPact_Logger.currentLevel == BloodPact_Logger.LEVEL.DEBUG and deadName then
+        BloodPact_Logger:Debug("[DungeonTracker] Parsed dead: '" .. deadName .. "' -> boss match: " .. (dungeon and dungeon.name or "none"), "DungeonTracker")
+    end
     if not dungeon then return end
 
     -- Step 3: Verify zone matches the dungeon
     if not self:VerifyZone(dungeon) then
-        BloodPact_Logger:Info("Boss '" .. deadName .. "' killed but zone mismatch. Expected: " .. dungeon.zone)
+        local zoneA = (GetRealZoneText and GetRealZoneText()) or "?"
+        local zoneB = (GetZoneText and GetZoneText()) or "?"
+        BloodPact_Logger:Info("Boss '" .. deadName .. "' killed but zone mismatch. Expected: " .. dungeon.zone .. " | GetRealZoneText: " .. zoneA .. " | GetZoneText: " .. zoneB)
         return
     end
 
@@ -80,14 +97,17 @@ end
 -- ============================================================
 
 -- Extract the dead entity name from a combat log death message.
--- Formats: "X dies." or "X is slain by Y."
+-- Formats vary by locale: "X dies.", "X is slain by Y.", "X has been slain by Y."
 function BloodPact_DungeonTracker:ParseDeadEntityName(msg)
     if not msg then return nil end
-    -- Pattern: "X dies."
+    -- Pattern: "X dies." (NPC death)
     local name = string.match(msg, "^(.+) dies%.$")
     if name then return name end
     -- Pattern: "X is slain by Y."
     name = string.match(msg, "^(.+) is slain by")
+    if name then return name end
+    -- Pattern: "X has been slain by Y."
+    name = string.match(msg, "^(.+) has been slain by")
     if name then return name end
     return nil
 end

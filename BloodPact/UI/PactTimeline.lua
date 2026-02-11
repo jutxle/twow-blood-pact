@@ -15,7 +15,6 @@ function BloodPact_PactTimeline:Create(parent)
     panel = CreateFrame("Frame", nil, parent)
     panel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-    panel:SetFrameLevel(10)
     panel:Hide()
 
     self:CreateFilterBar()
@@ -147,7 +146,8 @@ function BloodPact_PactTimeline:Refresh()
     if not panel then return end
 
     if panel.filterText then
-        panel.filterText:SetText(currentMemberFilter or "All Members")
+        local filterDisplay = currentMemberFilter and (BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(currentMemberFilter) or currentMemberFilter) or "All Members"
+        panel.filterText:SetText(filterDisplay)
     end
 
     -- Clear existing rows
@@ -208,8 +208,9 @@ function BloodPact_PactTimeline:CreateDeathRow(parent, death, yOffset)
     deathLabel:SetPoint("LEFT", ts, "RIGHT", 8, 0)
     deathLabel:SetTextColor(1.0, 0.2, 0.2, 1)
 
-    -- Death message (owner + flavorful phrasing with killer/ability)
-    local ownerPrefix = BP_SanitizeText(death.ownerAccountID or "?") .. "'s "
+    -- Death message (owner display name + flavorful phrasing with killer/ability)
+    local ownerDisplay = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayNameFor(death.ownerAccountID) or death.ownerAccountID or "?"
+    local ownerPrefix = BP_SanitizeText(ownerDisplay) .. "'s "
     local deathMsg = BloodPact_DeathDataManager:FormatDeathMessage(death, ownerPrefix)
     local ownerText = BP_CreateFontString(row, BP_FONT_SIZE_MEDIUM)
     ownerText:SetText(BP_SanitizeText(deathMsg))

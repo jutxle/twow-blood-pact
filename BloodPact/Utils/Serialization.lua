@@ -313,14 +313,15 @@ end
 
 -- ============================================================
 -- Message Type: ROSTER_SNAPSHOT
--- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp
--- (talent fields optional for backward compatibility)
+-- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp~displayName
+-- (talent fields optional for backward compatibility; displayName optional - added for Display Name feature)
 -- ============================================================
 
 function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, snapshot)
     if not snapshot then return nil end
     local tabs = snapshot.talentTabs or {}
     local t1, t2, t3 = tabs[1], tabs[2], tabs[3]
+    local displayName = snapshot.displayName or snapshot.characterName or ""
     local parts = {
         "RS",
         Escape(senderID),
@@ -339,7 +340,8 @@ function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, sna
         tostring((t2 and t2.pointsSpent) or 0),
         Escape((t3 and t3.name) or ""),
         tostring((t3 and t3.pointsSpent) or 0),
-        tostring(snapshot.timestamp or 0)
+        tostring(snapshot.timestamp or 0),
+        Escape(displayName)
     }
     return table.concat(parts, "~")
 end
@@ -371,20 +373,25 @@ function BloodPact_Serialization:DeserializeRosterSnapshot(str)
         table.insert(talentTabs, { name = Unescape(fields[16]), pointsSpent = tonumber(fields[17]) or 0 })
     end
     local timestampIdx = (table.getn(fields) >= 18) and 18 or 12
+    local displayName = nil
+    if table.getn(fields) >= 19 and fields[19] and string.len(fields[19]) > 0 then
+        displayName = Unescape(fields[19])
+    end
 
     return {
-        senderID    = Unescape(fields[2]),
-        pactCode    = Unescape(fields[3]),
+        senderID      = Unescape(fields[2]),
+        pactCode      = Unescape(fields[3]),
         characterName = Unescape(fields[4]),
-        class       = Unescape(fields[5]),
-        level       = tonumber(fields[6]) or 0,
-        copper      = tonumber(fields[7]) or 0,
-        profession1 = Unescape(fields[8]),
+        displayName   = displayName,
+        class         = Unescape(fields[5]),
+        level         = tonumber(fields[6]) or 0,
+        copper        = tonumber(fields[7]) or 0,
+        profession1   = Unescape(fields[8]),
         profession1Level = tonumber(fields[9]) or 0,
-        profession2 = Unescape(fields[10]),
+        profession2   = Unescape(fields[10]),
         profession2Level = tonumber(fields[11]) or 0,
-        talentTabs  = talentTabs,
-        timestamp   = tonumber(fields[timestampIdx]) or 0
+        talentTabs    = talentTabs,
+        timestamp     = tonumber(fields[timestampIdx]) or 0
     }
 end
 

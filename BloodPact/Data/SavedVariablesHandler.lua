@@ -49,6 +49,10 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     if BloodPactAccountDB.config.mainCharacter == nil then
         BloodPactAccountDB.config.mainCharacter = nil  -- explicitly nil = use current char
     end
+    -- Migrate: ensure displayName exists (default to accountID)
+    if (BloodPactAccountDB.config.displayName == nil or BloodPactAccountDB.config.displayName == "") and BloodPactAccountDB.accountID then
+        BloodPactAccountDB.config.displayName = BloodPactAccountDB.accountID
+    end
 
     -- Ensure debug storage exists
     if not BloodPactAccountDB.debug then
