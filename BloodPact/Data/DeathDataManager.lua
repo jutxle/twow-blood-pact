@@ -45,6 +45,28 @@ function BloodPact_DeathDataManager:RecordDeath(deathRecord)
     return true
 end
 
+-- Delete a death by character name and index (1 = most recent). For debugging.
+-- Returns true if deleted, false otherwise.
+function BloodPact_DeathDataManager:DeleteDeath(charName, index)
+    if not BloodPactAccountDB or not BloodPactAccountDB.deaths then return false end
+    local deathList = BloodPactAccountDB.deaths[charName]
+    if not deathList or table.getn(deathList) == 0 then return false end
+
+    local sorted = self:GetDeaths(charName)
+    if index < 1 or index > table.getn(sorted) then return false end
+
+    local toRemove = sorted[index]
+    for i, death in ipairs(deathList) do
+        if death.characterInstanceID == toRemove.characterInstanceID and
+           death.timestamp == toRemove.timestamp then
+            table.remove(deathList, i)
+            self.dirtyFlag = true
+            return true
+        end
+    end
+    return false
+end
+
 -- Enforce the 25-death-per-character limit
 function BloodPact_DeathDataManager:EnforceSizeLimit(charName)
     if not BloodPactAccountDB or not BloodPactAccountDB.deaths then return end

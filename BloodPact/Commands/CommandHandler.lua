@@ -59,6 +59,12 @@ function BloodPact_CommandHandler:HandleCommand(input)
     elseif input == "simremove" or string.sub(input, 1, 10) == "simremove " then
         local accountName = string.sub(rawInput, 11)
         self:HandleSimRemove(accountName)
+    elseif string.sub(input, 1, 12) == "deletedeath " then
+        local rest = string.gsub(string.sub(rawInput, 13), "^%s*(.-)%s*$", "%1")
+        self:HandleDeleteDeath(rest)
+    elseif string.sub(input, 1, 5) == "kick " then
+        local accountName = string.gsub(string.sub(rawInput, 6), "^%s*(.-)%s*$", "%1")
+        self:HandleKick(accountName)
     elseif input == "errors" then
         self:ShowErrors()
     elseif input == "clearerrors" then
@@ -163,7 +169,73 @@ function BloodPact_CommandHandler:ShowHelp()
     DEFAULT_CHAT_FRAME:AddMessage("  /bp trace         - Toggle addon message tracing")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp dump          - Dump addon state to chat")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp profile       - Show/clear performance profiles")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp deletedeath <char> [n] - Delete death #n (debug, 1=most recent)")
+    DEFAULT_CHAT_FRAME:AddMessage("  /bp kick <account> - Kick member from pact (owner only, debug)")
     DEFAULT_CHAT_FRAME:AddMessage("  /bp                 - Shortcut for /bloodpact")
+end
+
+-- /bp deletedeath <charName> [index] - Delete a death (debug). Index 1 = most recent.
+function BloodPact_CommandHandler:HandleDeleteDeath(rest)
+    if not rest or string.len(rest) == 0 then
+        BloodPact_Logger:Print("Usage: /bp deletedeath <charName> [index]")
+        BloodPact_Logger:Print("  Index 1 = most recent death. Omit for most recent.")
+        return
+    end
+
+    local args = {}
+    for word in string.gfind(rest, "%S+") do
+        table.insert(args, word)
+    end
+
+    local charName = args[1]
+    local index = tonumber(args[2]) or 1
+
+    if not BloodPactAccountDB or not BloodPactAccountDB.deaths then
+        BloodPact_Logger:Print("No death data.")
+        return
+    end
+
+    if not BloodPactAccountDB.deaths[charName] then
+        BloodPact_Logger:Print("No deaths for character '" .. tostring(charName) .. "'.")
+        return
+    end
+
+    if BloodPact_DeathDataManager:DeleteDeath(charName, index) then
+        BloodPact_Logger:Print("Deleted death #" .. tostring(index) .. " for " .. charName .. ".")
+        if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+            BloodPact_MainFrame:Refresh()
+        end
+    else
+        BloodPact_Logger:Print("Failed to delete. Check character name and index (1-" ..
+            tostring(table.getn(BloodPact_DeathDataManager:GetDeaths(charName))) .. ").")
+    end
+end
+
+-- /bp kick <accountName> - Kick a member from the pact (owner only, debug)
+function BloodPact_CommandHandler:HandleKick(accountName)
+    if not accountName or string.len(accountName) == 0 then
+        BloodPact_Logger:Print("Usage: /bp kick <accountName>")
+        return
+    end
+
+    if not BloodPact_PactManager:IsInPact() then
+        BloodPact_Logger:Print("You must be in a pact first.")
+        return
+    end
+
+    if not BloodPact_PactManager:IsOwner() then
+        BloodPact_Logger:Print("Only the pact owner can kick members.")
+        return
+    end
+
+    if BloodPact_PactManager:KickMember(accountName) then
+        BloodPact_Logger:Print("Kicked '" .. accountName .. "' from the pact.")
+        if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+            BloodPact_MainFrame:Refresh()
+        end
+    else
+        BloodPact_Logger:Print("Cannot kick '" .. accountName .. "' (not in pact, or cannot kick yourself).")
+    end
 end
 
 function BloodPact_CommandHandler:ShowErrors()

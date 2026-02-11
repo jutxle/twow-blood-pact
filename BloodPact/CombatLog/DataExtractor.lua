@@ -83,12 +83,14 @@ function BloodPact_DataExtractor:BuildDeathRecord(killerName, killerLevel, kille
     return record
 end
 
--- Calculate approximate total XP using hardcoded level thresholds
+-- Calculate total XP at death: cumulative XP to reach current level + XP within current level.
+-- UnitXP("player") returns only the XP gained within the current level (0 to XPMax).
+-- BLOODPACT_XP_PER_LEVEL[level] = total XP needed to have dinged to this level (static table).
 function BloodPact_DataExtractor:CalculateTotalXP(level)
     if not level or level < 1 then return 0 end
-    local baseXP = BLOODPACT_XP_PER_LEVEL[level] or 0
-    local currentXP = UnitXP("player") or 0
-    return baseXP + currentXP
+    local cumulativeToLevel = BLOODPACT_XP_PER_LEVEL[level] or 0
+    local xpInCurrentLevel = UnitXP("player") or 0
+    return cumulativeToLevel + xpInCurrentLevel
 end
 
 -- Get all equipped items of rare (3) quality or higher

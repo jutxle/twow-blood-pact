@@ -189,6 +189,24 @@ function BloodPact_PactManager:AddMember(accountID)
     }
 end
 
+-- Remove a member from the pact (owner only). For debugging.
+function BloodPact_PactManager:KickMember(accountID)
+    if not self:IsInPact() then return false end
+    if not self:IsOwner() then return false end
+
+    local selfID = BloodPact_AccountIdentity:GetAccountID()
+    if accountID == selfID then return false end
+
+    local members = BloodPactAccountDB.pact.members
+    if not members[accountID] then return false end
+
+    members[accountID] = nil
+    if BloodPactAccountDB.pact.syncedDeaths then
+        BloodPactAccountDB.pact.syncedDeaths[accountID] = nil
+    end
+    return true
+end
+
 function BloodPact_PactManager:UpdateMemberStats(accountID, deathRecord)
     if not self:IsInPact() then return end
     local members = BloodPactAccountDB.pact.members
