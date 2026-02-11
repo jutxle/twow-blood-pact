@@ -66,15 +66,16 @@ function BloodPact_SyncEngine:BroadcastAllDeaths()
 end
 
 -- Broadcast roster snapshot (character info for pact roster display)
-function BloodPact_SyncEngine:BroadcastRosterSnapshot()
+-- forceBroadcast: when true, skip main-character check (e.g. on join we always share current char)
+function BloodPact_SyncEngine:BroadcastRosterSnapshot(forceBroadcast)
     if not BloodPact_PactManager:IsInPact() then return end
     if not BloodPact_RosterDataManager then return end
     local selfID   = BloodPact_AccountIdentity:GetAccountID()
     local pactCode = BloodPact_PactManager:GetPactCode()
     local snapshot = BloodPact_RosterDataManager:GetCurrentSnapshot()
     if not snapshot then return end
-    -- Only broadcast when on main character (or main not set)
-    if not BloodPact_RosterDataManager:IsCurrentCharacterMain() then return end
+    -- Only broadcast when on main character (or main not set), unless forceBroadcast
+    if not forceBroadcast and not BloodPact_RosterDataManager:IsCurrentCharacterMain() then return end
     local msg = BloodPact_Serialization:SerializeRosterSnapshot(selfID, pactCode, snapshot)
     if msg then self:QueueMessage(msg) end
 end

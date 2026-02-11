@@ -166,8 +166,9 @@ function BloodPact_PactManager:OnJoinResponse(data)
     BloodPact_SyncEngine:SendSyncRequest()
 
     -- Share our own death history and roster snapshot with pact members
+    -- Force roster broadcast so creator sees our level even if we're on a non-main character
     BloodPact_SyncEngine:BroadcastAllDeaths()
-    BloodPact_SyncEngine:BroadcastRosterSnapshot()
+    BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
@@ -272,6 +273,11 @@ end
 function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
     if not self:IsInPact() then return end
     if not BloodPactAccountDB.pact then return end
+
+    -- Roster snapshots are only sent by pact members; add sender to members if not present.
+    -- This ensures non-owner members learn about other members (owner learns from join requests).
+    self:AddMember(senderID)
+
     if not BloodPactAccountDB.pact.rosterSnapshots then
         BloodPactAccountDB.pact.rosterSnapshots = {}
     end

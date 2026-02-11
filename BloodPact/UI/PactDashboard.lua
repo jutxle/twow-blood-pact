@@ -261,21 +261,24 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     end
     statusIcon:SetPoint("TOPLEFT", card, "TOPLEFT", 6, -6)
 
-    -- Character name + class
+    -- Class color for name (WoW class colors)
+    local nameColor = {1, 1, 1}
+    if BLOODPACT_CLASS_COLORS and class and class ~= "" then
+        local c = BLOODPACT_CLASS_COLORS[string.upper(class)]
+        if c then nameColor = c end
+    end
+
+    -- Character name (with class color)
     local nameText = BP_CreateFontString(card, BP_FONT_SIZE_MEDIUM)
     nameText:SetText(BP_SanitizeText(charName))
     nameText:SetPoint("LEFT", statusIcon, "RIGHT", 4, 0)
-    nameText:SetTextColor(1, 1, 1, 1)
+    nameText:SetTextColor(nameColor[1], nameColor[2], nameColor[3], 1)
 
+    -- Class label (in parentheses, smaller)
     local classText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
-    classText:SetText(class ~= "" and class or "?")
-    classText:SetPoint("LEFT", nameText, "RIGHT", 6, 0)
-    if BLOODPACT_CLASS_COLORS and class and BLOODPACT_CLASS_COLORS[string.upper(class)] then
-        local c = BLOODPACT_CLASS_COLORS[string.upper(class)]
-        classText:SetTextColor(c[1], c[2], c[3], 1)
-    else
-        classText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
-    end
+    classText:SetText(class ~= "" and ("(" .. class .. ")") or "")
+    classText:SetPoint("LEFT", nameText, "RIGHT", 4, 0)
+    classText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     -- Level
     local levelText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)

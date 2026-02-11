@@ -32,30 +32,46 @@ function BloodPact_RosterDataManager:GetCurrentSnapshot()
     }
 end
 
--- Get the two primary profession names and levels (vanilla 1.12 skill API)
+-- Get profession names and levels (vanilla 1.12 / Turtle WoW skill API)
 -- Returns prof1Name, prof1Level, prof2Name, prof2Level
+-- Tries GetNumSkillLines and GetNumSkills; includes all professions (primary + secondary)
 function BloodPact_RosterDataManager:GetProfessionLevels()
-    if not GetNumSkillLines or not GetSkillLineInfo then
+    local getNum = GetNumSkillLines or GetNumSkills
+    if not getNum or not GetSkillLineInfo then
         return nil, 0, nil, 0
     end
 
     local professions = {}
-    local numLines = GetNumSkillLines()
+    local numLines = getNum()
     if not numLines or numLines <= 0 then return nil, 0, nil, 0 end
 
     -- Vanilla 1.12: GetSkillLineInfo(index) returns skillName, isHeader, isExpanded, skillRank, ...
+    -- Some clients use 0-based index; try 1-based first
     for i = 1, numLines do
         local ok, name, isHeader, expanded, rank, temp, mod, maxRank = pcall(GetSkillLineInfo, i)
-        if ok and name and not isHeader and rank and rank > 0 then
-            -- Filter to primary professions (exclude First Aid, Cooking, Fishing - secondary)
-            local lower = string.lower(name or "")
-            if lower ~= "first aid" and lower ~= "cooking" and lower ~= "fishing" then
+        if ok and name and name ~= "" then
+            -- isHeader can be 1/nil or true/false depending on client
+            local isHeaderVal = (isHeader == 1 or isHeader == true)
+            if not isHeaderVal and rank and rank > 0 then
                 table.insert(professions, { name = name, level = rank })
             end
         end
     end
 
-    -- Return first two primary professions
+    -- Fallback: try 0-based indexing if 1-based yielded nothing
+    if table.getn(professions) == 0 then
+        for i = 0, numLines - 1 do
+            local ok, name, isHeader, expanded, rank = pcall(GetSkillLineInfo, i)
+            if ok and name and name ~= "" and rank and rank > 0 then
+                local isHeaderVal = (isHeader == 1 or isHeader == true)
+                if not isHeaderVal then
+                    table.insert(professions, { name = name, level = rank })
+                end
+            end
+        end
+    end
+
+    -- Return first two professions (primary preferred by order in skill list)
     local p1 = professions[1]
     local p2 = professions[2]
     return (p1 and p1.name), (p1 and p1.level) or 0,
