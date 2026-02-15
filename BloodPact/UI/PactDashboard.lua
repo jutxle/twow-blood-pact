@@ -175,14 +175,22 @@ function BloodPact_PactDashboard:Refresh()
     local aliveCount  = 0
     local highestLevel = 0
     local totalCopper = 0
+    local rosterSnapshots = pact.rosterSnapshots or {}
+    local selfID = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetAccountID()
 
     if pact.members then
-        for _, member in pairs(pact.members) do
+        for accountID, member in pairs(pact.members) do
             memberCount = memberCount + 1
             if member.isAlive then aliveCount = aliveCount + 1 end
-            if (member.highestLevel or 0) > highestLevel then
-                highestLevel = member.highestLevel
+            -- Use max of member.highestLevel and roster snapshot level (snapshot = current char, may be higher for living chars)
+            local memberLevel = member.highestLevel or 0
+            if accountID == selfID and BloodPact_RosterDataManager then
+                local liveSnap = BloodPact_RosterDataManager:GetCurrentSnapshot()
+                if liveSnap and (liveSnap.level or 0) > memberLevel then memberLevel = liveSnap.level end
+            elseif rosterSnapshots[accountID] and (rosterSnapshots[accountID].level or 0) > memberLevel then
+                memberLevel = rosterSnapshots[accountID].level
             end
+            if memberLevel > highestLevel then highestLevel = memberLevel end
         end
     end
 
@@ -230,7 +238,7 @@ function BloodPact_PactDashboard:RefreshRosterCards()
 
     -- Card dimensions: 2 columns (height accommodates display name + char/class + level + professions + talents)
     local cardW = 275
-    local cardH = 122
+    local cardH = 130
     local padX = 4
     local padY = 6
     local cols = 2
@@ -269,10 +277,20 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     local class = (snapshot and snapshot.class) or ""
     local level = (snapshot and snapshot.level) or member.highestLevel or 0
     local copper = (snapshot and snapshot.copper) or 0
-    local prof1 = (snapshot and snapshot.profession1) or ""
-    local prof1Lvl = (snapshot and snapshot.profession1Level) or 0
-    local prof2 = (snapshot and snapshot.profession2) or ""
-    local prof2Lvl = (snapshot and snapshot.profession2Level) or 0
+    local primaryProfs, secondaryProfs = {}, {}
+    local SECONDARY = { ["First Aid"] = true, ["Cooking"] = true, ["Fishing"] = true }
+    for i = 1, 4 do
+        local n = (snapshot and snapshot["profession" .. i]) or ""
+        local l = (snapshot and snapshot["profession" .. i .. "Level"]) or 0
+        if n ~= "" then
+            local entry = n .. " " .. tostring(l)
+            if SECONDARY[n] then
+                table.insert(secondaryProfs, entry)
+            else
+                table.insert(primaryProfs, entry)
+            end
+        end
+    end
     local talentTabs = (snapshot and snapshot.talentTabs) or {}
 
     -- Row 1: Status icon + Account Display Name
@@ -314,21 +332,25 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
     goldText:SetText(" | " .. BloodPact_DeathDataManager:FormatCopper(copper))
     goldText:SetPoint("LEFT", levelText, "RIGHT", 2, 0)
     goldText:SetTextColor(1.0, 0.84, 0.0, 1)
-    -- Row 4: Professions (show name even if level is 0)
-    local profStr = ""
-    if prof1 ~= "" then
-        profStr = prof1 .. " " .. tostring(prof1Lvl)
-    end
-    if prof2 ~= "" then
-        if profStr ~= "" then profStr = profStr .. " | " end
-        profStr = profStr .. prof2 .. " " .. tostring(prof2Lvl)
-    end
-    if profStr == "" then profStr = "—" end
+    -- Row 4: Primary professions (e.g. Mining 100 | Herbalism 75)
+    local primaryStr = table.concat(primaryProfs, " | ")
+    if primaryStr == "" then primaryStr = "—" end
 
     local profText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
-    profText:SetText(profStr)
+    profText:SetText(primaryStr)
     profText:SetPoint("TOPLEFT", levelText, "BOTTOMLEFT", 0, -4)
     profText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+
+    -- Row 4b: Secondary professions (Cooking, Fishing, First Aid) on line below
+    local secondaryStr = table.concat(secondaryProfs, " | ")
+    local secondaryAnchor = profText
+    if secondaryStr ~= "" then
+        local secText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
+        secText:SetText(secondaryStr)
+        secText:SetPoint("TOPLEFT", profText, "BOTTOMLEFT", 0, -4)
+        secText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
+        secondaryAnchor = secText
+    end
 
     -- Row 5: Talents (all 3 trees with points spent: "Affliction 5 | Demonology 3 | Destruction 0")
     local talentParts = {}
@@ -342,7 +364,7 @@ function BloodPact_PactDashboard:CreateRosterCard(parent, accountID, member, sna
 
     local talentText = BP_CreateFontString(card, BP_FONT_SIZE_SMALL)
     talentText:SetText(talentStr)
-    talentText:SetPoint("TOPLEFT", profText, "BOTTOMLEFT", 0, -4)
+    talentText:SetPoint("TOPLEFT", secondaryAnchor, "BOTTOMLEFT", 0, -4)
     talentText:SetTextColor(BP_Color(BLOODPACT_COLORS.TEXT_SECONDARY))
 
     -- Death count

@@ -297,8 +297,7 @@ function BloodPact_Serialization:DeserializeChunk(str)
         table.insert(fields, part)
         fieldCount = fieldCount + 1
     end
-    -- Remainder is payload
-    local payload = string.sub(str, pos - (string.len(fields[6] or "") + 1))
+    -- Remainder of string (from pos) is payload
 
     if fields[1] ~= "CK" then return nil end
     return {
@@ -313,8 +312,8 @@ end
 
 -- ============================================================
 -- Message Type: ROSTER_SNAPSHOT
--- Format: RS~senderID~pactCode~charName~class~level~copper~prof1~prof1Lvl~prof2~prof2Lvl~t1Name~t1Pts~t2Name~t2Pts~t3Name~t3Pts~timestamp~displayName
--- (talent fields optional for backward compatibility; displayName optional - added for Display Name feature)
+-- Format v1 (18+ fields): RS~...~prof1~prof1Lvl~prof2~prof2Lvl~t1~t1Pts~t2~t2Pts~t3~t3Pts~timestamp~displayName
+-- Format v2 (24+ fields): adds prof3~prof3Lvl~prof4~prof4Lvl after prof2 (Cooking, Fishing)
 -- ============================================================
 
 function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, snapshot)
@@ -334,6 +333,10 @@ function BloodPact_Serialization:SerializeRosterSnapshot(senderID, pactCode, sna
         tostring(snapshot.profession1Level or 0),
         Escape(snapshot.profession2 or ""),
         tostring(snapshot.profession2Level or 0),
+        Escape(snapshot.profession3 or ""),
+        tostring(snapshot.profession3Level or 0),
+        Escape(snapshot.profession4 or ""),
+        tostring(snapshot.profession4Level or 0),
         Escape((t1 and t1.name) or ""),
         tostring((t1 and t1.pointsSpent) or 0),
         Escape((t2 and t2.name) or ""),
@@ -366,32 +369,52 @@ function BloodPact_Serialization:DeserializeRosterSnapshot(str)
     if table.getn(fields) < 12 then return nil end
     if fields[1] ~= "RS" then return nil end
 
+    local n = table.getn(fields)
+    -- v2 format: 24+ fields (prof1-4, talents, timestamp, displayName)
+    local prof1, prof1Lvl, prof2, prof2Lvl = Unescape(fields[8]), tonumber(fields[9]) or 0, Unescape(fields[10]), tonumber(fields[11]) or 0
+    local prof3, prof3Lvl, prof4, prof4Lvl = "", 0, "", 0
     local talentTabs = {}
-    if table.getn(fields) >= 18 then
+    local timestampIdx, displayNameIdx = 12, nil
+
+    if n >= 24 then
+        prof3, prof3Lvl = Unescape(fields[12]), tonumber(fields[13]) or 0
+        prof4, prof4Lvl = Unescape(fields[14]), tonumber(fields[15]) or 0
+        table.insert(talentTabs, { name = Unescape(fields[16]), pointsSpent = tonumber(fields[17]) or 0 })
+        table.insert(talentTabs, { name = Unescape(fields[18]), pointsSpent = tonumber(fields[19]) or 0 })
+        table.insert(talentTabs, { name = Unescape(fields[20]), pointsSpent = tonumber(fields[21]) or 0 })
+        timestampIdx = 22
+        displayNameIdx = 23
+    elseif n >= 18 then
         table.insert(talentTabs, { name = Unescape(fields[12]), pointsSpent = tonumber(fields[13]) or 0 })
         table.insert(talentTabs, { name = Unescape(fields[14]), pointsSpent = tonumber(fields[15]) or 0 })
         table.insert(talentTabs, { name = Unescape(fields[16]), pointsSpent = tonumber(fields[17]) or 0 })
+        timestampIdx = 18
+        displayNameIdx = 19
     end
-    local timestampIdx = (table.getn(fields) >= 18) and 18 or 12
+
     local displayName = nil
-    if table.getn(fields) >= 19 and fields[19] and string.len(fields[19]) > 0 then
-        displayName = Unescape(fields[19])
+    if displayNameIdx and n >= displayNameIdx and fields[displayNameIdx] and string.len(fields[displayNameIdx]) > 0 then
+        displayName = Unescape(fields[displayNameIdx])
     end
 
     return {
-        senderID      = Unescape(fields[2]),
-        pactCode      = Unescape(fields[3]),
-        characterName = Unescape(fields[4]),
-        displayName   = displayName,
-        class         = Unescape(fields[5]),
-        level         = tonumber(fields[6]) or 0,
-        copper        = tonumber(fields[7]) or 0,
-        profession1   = Unescape(fields[8]),
-        profession1Level = tonumber(fields[9]) or 0,
-        profession2   = Unescape(fields[10]),
-        profession2Level = tonumber(fields[11]) or 0,
-        talentTabs    = talentTabs,
-        timestamp     = tonumber(fields[timestampIdx]) or 0
+        senderID        = Unescape(fields[2]),
+        pactCode        = Unescape(fields[3]),
+        characterName   = Unescape(fields[4]),
+        displayName     = displayName,
+        class           = Unescape(fields[5]),
+        level           = tonumber(fields[6]) or 0,
+        copper          = tonumber(fields[7]) or 0,
+        profession1      = prof1,
+        profession1Level = prof1Lvl,
+        profession2      = prof2,
+        profession2Level = prof2Lvl,
+        profession3      = prof3,
+        profession3Level = prof3Lvl,
+        profession4      = prof4,
+        profession4Level = prof4Lvl,
+        talentTabs       = talentTabs,
+        timestamp       = tonumber(fields[timestampIdx]) or 0
     }
 end
 

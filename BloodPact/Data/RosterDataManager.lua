@@ -27,37 +27,39 @@ function BloodPact_RosterDataManager:GetCurrentSnapshot()
     local level = UnitLevel("player") or 0
     local copper = GetMoney() or 0
 
-    local prof1, prof1Level, prof2, prof2Level = self:GetProfessionLevels()
+    local professions = self:GetProfessionLevels()
     local talentTabs = self:GetTalentTabs()
 
     local displayName = BloodPact_AccountIdentity and BloodPact_AccountIdentity:GetDisplayName() or charName
-    return {
+    local snap = {
         characterName = charName,
         displayName   = displayName,
         class         = classEn or "",
         level         = level,
         copper        = copper,
-        profession1   = prof1 or "",
-        profession1Level = prof1Level or 0,
-        profession2   = prof2 or "",
-        profession2Level = prof2Level or 0,
         talentTabs    = talentTabs or {},
         timestamp     = time()
     }
+    for i = 1, 4 do
+        local p = professions[i]
+        snap["profession" .. i] = (p and p.name) or ""
+        snap["profession" .. i .. "Level"] = (p and p.level) or 0
+    end
+    return snap
 end
 
 -- Get profession names and levels (vanilla 1.12 / Turtle WoW skill API)
--- Returns prof1Name, prof1Level, prof2Name, prof2Level
+-- Returns { {name, level}, ... } - up to 4 professions including Cooking and Fishing
 -- Only includes actual professions (Mining, Herbalism, etc.) - NOT class spell schools
 function BloodPact_RosterDataManager:GetProfessionLevels()
     local getNum = GetNumSkillLines or GetNumSkills
     if not getNum or not GetSkillLineInfo then
-        return nil, 0, nil, 0
+        return {}
     end
 
     local professions = {}
     local numLines = getNum()
-    if not numLines or numLines <= 0 then return nil, 0, nil, 0 end
+    if not numLines or numLines <= 0 then return {} end
 
     local function isProfession(name)
         return name and PROFESSION_NAMES[name]
@@ -89,10 +91,12 @@ function BloodPact_RosterDataManager:GetProfessionLevels()
         end
     end
 
-    local p1 = professions[1]
-    local p2 = professions[2]
-    return (p1 and p1.name), (p1 and p1.level) or 0,
-           (p2 and p2.name), (p2 and p2.level) or 0
+    -- Return up to 4 professions (includes Cooking and Fishing when present)
+    local result = {}
+    for i = 1, math.min(4, table.getn(professions)) do
+        result[i] = professions[i]
+    end
+    return result
 end
 
 -- Get talent tab names and points spent (vanilla 1.12 GetNumTalentTabs / GetTalentTabInfo)

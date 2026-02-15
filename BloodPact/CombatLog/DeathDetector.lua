@@ -101,6 +101,17 @@ function BloodPact_DeathDetector:ConfirmAndLogDeath()
 
     -- Broadcast to pact if applicable
     if BloodPact_PactManager:IsInPact() then
+        -- Update our own member record (deathCount, highestLevel, isAlive)
+        local selfID = BloodPact_AccountIdentity:GetAccountID()
+        BloodPact_PactManager:UpdateMemberStats(selfID, deathRecord)
+        local members = BloodPactAccountDB and BloodPactAccountDB.pact and BloodPactAccountDB.pact.members
+        if members and members[selfID] then
+            members[selfID].isAlive = false
+        end
+        -- If we're the owner, transfer ownership to next living member
+        if BloodPact_PactManager:IsOwner() then
+            BloodPact_OwnershipManager:OnOwnerDeath()
+        end
         BloodPact_SyncEngine:BroadcastDeath(deathRecord)
     end
 

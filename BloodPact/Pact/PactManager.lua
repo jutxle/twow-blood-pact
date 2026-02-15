@@ -267,6 +267,8 @@ function BloodPact_PactManager:OnMemberDeath(senderID, deathRecord)
     if not self:IsInPact() then return end
     if not BloodPactAccountDB.pact.members then return end
 
+    if BloodPact_RecordSyncResponder then BloodPact_RecordSyncResponder(senderID) end
+
     -- Store the synced death
     BloodPact_DeathDataManager:StoreSyncedDeath(senderID, deathRecord)
 
@@ -310,9 +312,18 @@ function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
     if not self:IsInPact() then return end
     if not BloodPactAccountDB.pact then return end
 
+    if BloodPact_RecordSyncResponder then BloodPact_RecordSyncResponder(senderID) end
+
     -- Roster snapshots are only sent by pact members; add sender to members if not present.
     -- This ensures non-owner members learn about other members (owner learns from join requests).
     self:AddMember(senderID)
+
+    -- Update member.highestLevel from roster snapshot (current char level). Members who haven't died
+    -- would otherwise have highestLevel=0, causing the pact aggregate to show only our own level.
+    local member = BloodPactAccountDB.pact.members[senderID]
+    if member and (data.level or 0) > (member.highestLevel or 0) then
+        member.highestLevel = data.level
+    end
 
     if not BloodPactAccountDB.pact.rosterSnapshots then
         BloodPactAccountDB.pact.rosterSnapshots = {}
@@ -327,6 +338,10 @@ function BloodPact_PactManager:OnRosterSnapshot(senderID, data)
         profession1Level = data.profession1Level,
         profession2     = data.profession2,
         profession2Level = data.profession2Level,
+        profession3     = data.profession3,
+        profession3Level = data.profession3Level,
+        profession4     = data.profession4,
+        profession4Level = data.profession4Level,
         talentTabs      = data.talentTabs or {},
         timestamp       = data.timestamp
     }
@@ -348,6 +363,7 @@ end
 -- Called when bulk dungeon completions arrive from a pact member (login/join sync)
 function BloodPact_PactManager:OnMemberDungeonBulk(senderID, completions)
     if not self:IsInPact() then return end
+    if BloodPact_RecordSyncResponder then BloodPact_RecordSyncResponder(senderID) end
     BloodPact_DungeonDataManager:StoreSyncedCompletions(senderID, completions)
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then

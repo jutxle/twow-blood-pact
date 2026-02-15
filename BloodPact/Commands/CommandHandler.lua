@@ -194,6 +194,7 @@ function BloodPact_CommandHandler:HandleSync()
         return
     end
     BloodPact_Logger:Print("Requesting full sync with pact members...")
+    BloodPact_StartManualSyncWatch()
     BloodPact_SyncEngine:SendSyncRequest()
     BloodPact_SyncEngine:BroadcastAllDeaths()
     BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
@@ -201,7 +202,7 @@ function BloodPact_CommandHandler:HandleSync()
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
     end
-    BloodPact_Logger:Print("Sync request sent. Other members will respond shortly.")
+    BloodPact_Logger:Print("Sync request sent. You'll see feedback in ~12 seconds.")
 end
 
 function BloodPact_CommandHandler:ShowStatus()
