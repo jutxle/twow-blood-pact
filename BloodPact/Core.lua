@@ -12,6 +12,7 @@ local BP_Timers = {
     chunkTimeout = 0,   -- chunk buffer cleanup (5s interval)
     syncRequest  = 0,   -- post-login sync request delay
     joinTimeout  = 0,   -- pact join request timeout
+    questTick    = 0,   -- quest log broadcast throttle (3s cooldown)
 }
 
 local BP_LoginSyncPending = false
@@ -45,6 +46,9 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
         end
         if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Initialize then
             BloodPact_DungeonDetailOverlay:Initialize()
+        end
+        if BloodPact_SharedQuestsOverlay and BloodPact_SharedQuestsOverlay.Initialize then
+            BloodPact_SharedQuestsOverlay:Initialize()
         end
         BloodPact_Settings:Initialize()
 
@@ -85,6 +89,11 @@ function BloodPact_OnEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9)
         -- a1=prefix, a2=message, a3=channel, a4=sender
         if a1 == BLOODPACT_ADDON_PREFIX then
             BloodPact_SyncEngine:OnAddonMessage(a2, a3, a4)
+        end
+
+    elseif event == "QUEST_LOG_UPDATE" then
+        if BloodPact_QuestTracker and BloodPact_QuestTracker.OnQuestLogUpdate then
+            BloodPact_QuestTracker:OnQuestLogUpdate()
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
@@ -136,6 +145,16 @@ BloodPactFrame:SetScript("OnUpdate", function()
         BloodPact_SyncEngine:CleanExpiredChunks()
     end
 
+    -- Quest log broadcast throttle (check every 0.5s)
+    BP_Timers.questTick = BP_Timers.questTick + elapsed
+    if BP_Timers.questTick >= 0.5 then
+        local questElapsed = BP_Timers.questTick
+        BP_Timers.questTick = 0
+        if BloodPact_QuestTracker and BloodPact_QuestTracker.Tick then
+            BloodPact_QuestTracker:Tick(questElapsed)
+        end
+    end
+
     -- Post-login sync request (after BLOODPACT_SYNC_REQUEST_DELAY seconds)
     if BP_LoginSyncPending then
         BP_Timers.syncRequest = BP_Timers.syncRequest + elapsed
@@ -144,6 +163,7 @@ BloodPactFrame:SetScript("OnUpdate", function()
             BloodPact_SyncEngine:SendSyncRequest()
             BloodPact_SyncEngine:BroadcastRosterSnapshot()
             BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
+            BloodPact_SyncEngine:BroadcastQuestLog()
         end
     end
 
@@ -188,6 +208,7 @@ BloodPactFrame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
 BloodPactFrame:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE")
 BloodPactFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
 BloodPactFrame:RegisterEvent("CHAT_MSG_ADDON")
+BloodPactFrame:RegisterEvent("QUEST_LOG_UPDATE")
 
 -- ============================================================
 -- Wrap main event/update handlers for error capture

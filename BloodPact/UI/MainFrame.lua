@@ -212,6 +212,7 @@ function BloodPact_MainFrame:SwitchTab(tabIndex)
     if BloodPact_PersonalTimeline and BloodPact_PersonalTimeline.Hide then BloodPact_PersonalTimeline:Hide() end
     if BloodPact_PactTimeline and BloodPact_PactTimeline.Hide then BloodPact_PactTimeline:Hide() end
     if BloodPact_DungeonDetailOverlay and BloodPact_DungeonDetailOverlay.Hide then BloodPact_DungeonDetailOverlay:Hide() end
+    if BloodPact_SharedQuestsOverlay and BloodPact_SharedQuestsOverlay.Hide then BloodPact_SharedQuestsOverlay:Hide() end
 
     -- Show/hide panels
     for i, panel in pairs(tabPanels) do

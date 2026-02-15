@@ -539,6 +539,87 @@ function BloodPact_Serialization:DeserializeDungeonBulk(str)
 end
 
 -- ============================================================
+-- Message Type: QUEST_LOG (full quest log sync)
+-- Format: QL~senderID~pactCode~charName~timestamp~quest1,quest2,quest3,...
+-- Quest names are comma-separated in the payload (commas never appear in WoW quest names).
+-- Typically ~540 bytes for 20 quests, so this will be auto-chunked by QueueMessage.
+-- ============================================================
+
+function BloodPact_Serialization:SerializeQuestLog(senderID, pactCode, data)
+    if not data then return nil end
+    local questParts = {}
+    for _, q in ipairs(data.quests or {}) do
+        table.insert(questParts, Escape(q))
+    end
+    local payload = table.concat(questParts, ",")
+    local parts = {
+        "QL",
+        Escape(senderID),
+        Escape(pactCode),
+        Escape(data.characterName or ""),
+        tostring(data.timestamp or 0),
+        payload
+    }
+    return table.concat(parts, "~")
+end
+
+function BloodPact_Serialization:DeserializeQuestLog(str)
+    -- Parse first 5 tilde-delimited header fields, remainder is comma-separated quest payload
+    local fields = {}
+    local pos = 1
+    local len = string.len(str)
+    local fieldCount = 0
+    while pos <= len and fieldCount < 5 do
+        local nextSep = string.find(str, "~", pos, true)
+        local part
+        if nextSep then
+            part = string.sub(str, pos, nextSep - 1)
+            pos = nextSep + 1
+        else
+            part = string.sub(str, pos)
+            pos = len + 1
+        end
+        table.insert(fields, part)
+        fieldCount = fieldCount + 1
+    end
+    -- Remainder is the payload (comma-separated quest names)
+    local payload = string.sub(str, pos)
+
+    if table.getn(fields) < 5 then return nil end
+    if fields[1] ~= "QL" then return nil end
+
+    -- Parse payload: quest1,quest2,...
+    local quests = {}
+    if payload and string.len(payload) > 0 then
+        local pPos = 1
+        local pLen = string.len(payload)
+        while pPos <= pLen do
+            local nextComma = string.find(payload, ",", pPos, true)
+            local entry
+            if nextComma then
+                entry = string.sub(payload, pPos, nextComma - 1)
+                pPos = nextComma + 1
+            else
+                entry = string.sub(payload, pPos)
+                pPos = pLen + 1
+            end
+            local questName = Unescape(entry)
+            if questName and string.len(questName) > 0 then
+                table.insert(quests, questName)
+            end
+        end
+    end
+
+    return {
+        senderID      = Unescape(fields[2]),
+        pactCode      = Unescape(fields[3]),
+        characterName = Unescape(fields[4]),
+        timestamp     = tonumber(fields[5]) or 0,
+        quests        = quests,
+    }
+end
+
+-- ============================================================
 -- Utility: Get message type from raw string
 -- ============================================================
 

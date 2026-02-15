@@ -17,10 +17,12 @@ Data\RosterDataManager.lua
 Data\SavedVariablesHandler.lua
 Data\DeathDataManager.lua
 Data\DungeonDataManager.lua
+Data\QuestDataManager.lua
 CombatLog\DataExtractor.lua
 CombatLog\Parser.lua
 CombatLog\DeathDetector.lua
 CombatLog\DungeonTracker.lua
+CombatLog\QuestTracker.lua
 Pact\JoinCodeGenerator.lua
 Pact\ConflictResolver.lua
 Pact\OwnershipManager.lua
@@ -35,5 +37,6 @@ UI\PersonalTimeline.lua
 UI\PactDashboard.lua
 UI\PactTimeline.lua
 UI\DungeonDetailOverlay.lua
+UI\SharedQuestsOverlay.lua
 UI\Settings.lua
 Core.lua

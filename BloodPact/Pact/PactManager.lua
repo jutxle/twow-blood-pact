@@ -180,6 +180,7 @@ function BloodPact_PactManager:OnJoinResponse(data)
     BloodPact_SyncEngine:BroadcastAllDeaths()
     BloodPact_SyncEngine:BroadcastRosterSnapshot(true)
     BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
+    BloodPact_SyncEngine:BroadcastQuestLog()
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()
@@ -236,6 +237,9 @@ function BloodPact_PactManager:KickMember(accountID)
     members[accountID] = nil
     if BloodPactAccountDB.pact.syncedDeaths then
         BloodPactAccountDB.pact.syncedDeaths[accountID] = nil
+    end
+    if BloodPactAccountDB.pact.syncedQuestLogs then
+        BloodPactAccountDB.pact.syncedQuestLogs[accountID] = nil
     end
     return true
 end
@@ -300,6 +304,7 @@ function BloodPact_PactManager:OnSyncRequest(senderID)
     BloodPact_SyncEngine:BroadcastAllDeaths()
     BloodPact_SyncEngine:BroadcastRosterSnapshot()
     BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
+    BloodPact_SyncEngine:BroadcastQuestLog()
 end
 
 -- Called when a roster snapshot arrives from a pact member
@@ -360,6 +365,18 @@ function BloodPact_PactManager:OnMemberDungeonBulk(senderID, completions)
     if not self:IsInPact() then return end
     if BloodPact_RecordSyncResponder then BloodPact_RecordSyncResponder(senderID) end
     BloodPact_DungeonDataManager:StoreSyncedCompletions(senderID, completions)
+
+    if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
+        BloodPact_MainFrame:Refresh()
+    end
+end
+
+-- Called when a quest log arrives from a pact member
+function BloodPact_PactManager:OnMemberQuestLog(senderID, data)
+    if not self:IsInPact() then return end
+    if BloodPact_QuestDataManager then
+        BloodPact_QuestDataManager:StoreSyncedQuestLog(senderID, data)
+    end
 
     if BloodPact_MainFrame and BloodPact_MainFrame:IsVisible() then
         BloodPact_MainFrame:Refresh()

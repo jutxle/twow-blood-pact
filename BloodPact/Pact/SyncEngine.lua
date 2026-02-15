@@ -104,6 +104,25 @@ function BloodPact_SyncEngine:BroadcastAllDungeonCompletions()
     if msg then self:QueueMessage(msg) end
 end
 
+-- Broadcast the local player's current quest log to pact members
+function BloodPact_SyncEngine:BroadcastQuestLog()
+    if not BloodPact_PactManager:IsInPact() then return end
+    if not BloodPact_QuestDataManager then return end
+    local selfID   = BloodPact_AccountIdentity:GetAccountID()
+    local pactCode = BloodPact_PactManager:GetPactCode()
+    local charName = UnitName("player")
+    local quests   = BloodPact_QuestDataManager:GetLocalQuests()
+
+    local data = {
+        characterName = charName,
+        quests        = quests,
+        timestamp     = time()
+    }
+
+    local msg = BloodPact_Serialization:SerializeQuestLog(selfID, pactCode, data)
+    if msg then self:QueueMessage(msg) end
+end
+
 -- Send a sync request (asking others to send us their deaths)
 function BloodPact_SyncEngine:SendSyncRequest()
     if not BloodPact_PactManager:IsInPact() then return end
@@ -232,6 +251,8 @@ function BloodPact_SyncEngine:OnAddonMessage(msg, channel, sender)
         self:HandleDungeonCompletion(msg, sender)
     elseif msgType == "DB" then
         self:HandleDungeonBulk(msg, sender)
+    elseif msgType == "QL" then
+        self:HandleQuestLog(msg, sender)
     elseif msgType == "CK" then
         self:HandleChunk(msg, sender)
     end
@@ -304,6 +325,15 @@ function BloodPact_SyncEngine:HandleDungeonBulk(msg, sender)
     if data.senderID == BloodPact_AccountIdentity:GetAccountID() then return end
 
     BloodPact_PactManager:OnMemberDungeonBulk(data.senderID, data.completions)
+end
+
+function BloodPact_SyncEngine:HandleQuestLog(msg, sender)
+    local data = BloodPact_Serialization:DeserializeQuestLog(msg)
+    if not data then return end
+    if not self:IsMessageForOurPact(data.pactCode) then return end
+    if data.senderID == BloodPact_AccountIdentity:GetAccountID() then return end
+
+    BloodPact_PactManager:OnMemberQuestLog(data.senderID, data)
 end
 
 function BloodPact_SyncEngine:HandleChunk(msg, sender)

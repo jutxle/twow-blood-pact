@@ -129,6 +129,24 @@ function BloodPact_PactDashboard:CreateActionButtons()
             BloodPact_Logger:Print("Pact Timeline not available. Try /reload - if it persists, the PactTimeline module failed to load.")
         end
     end)
+
+    local btnQuests = BP_CreateButton(panel, "Shared Quests", 100, 22)
+    btnQuests:SetPoint("LEFT", btnTimeline, "RIGHT", 8, 0)
+    btnQuests:SetScript("OnClick", function()
+        if BloodPact_SharedQuestsOverlay and BloodPact_SharedQuestsOverlay.Show and BloodPact_SharedQuestsOverlay.panel then
+            BloodPact_SharedQuestsOverlay:Show()
+        elseif BloodPact_SharedQuestsOverlay and BloodPact_SharedQuestsOverlay.Initialize and not BloodPact_SharedQuestsOverlay.panel then
+            -- Panel not yet created (e.g. Initialize was never called); try now
+            BloodPact_SharedQuestsOverlay:Initialize()
+            if BloodPact_SharedQuestsOverlay.panel then
+                BloodPact_SharedQuestsOverlay:Show()
+            else
+                BloodPact_Logger:Print("Shared Quests failed to initialize. Try a full game restart to pick up new addon files.")
+            end
+        else
+            BloodPact_Logger:Print("Shared Quests not available. A full game restart (not /reload) may be needed to load new addon files.")
+        end
+    end)
 end
 
 -- ============================================================

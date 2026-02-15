@@ -33,6 +33,9 @@ function BloodPact_SavedVariablesHandler:ValidateData()
     if not BloodPactAccountDB.dungeonCompletions then
         BloodPactAccountDB.dungeonCompletions = {}
     end
+    if not BloodPactAccountDB.questLog then
+        BloodPactAccountDB.questLog = {}
+    end
     if not BloodPactAccountDB.config then
         BloodPactAccountDB.config = {
             uiScale            = 1.0,
@@ -104,6 +107,7 @@ function BloodPact_SavedVariablesHandler:ValidateData()
             if not pact.syncedDeaths then pact.syncedDeaths = {} end
             if not pact.rosterSnapshots then pact.rosterSnapshots = {} end
             if not pact.syncedDungeonCompletions then pact.syncedDungeonCompletions = {} end
+            if not pact.syncedQuestLogs then pact.syncedQuestLogs = {} end
         end
     end
 end
