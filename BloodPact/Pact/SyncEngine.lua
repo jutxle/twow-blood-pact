@@ -10,6 +10,10 @@ local messageQueue = {}
 -- value = {chunks={}, totalChunks=N, receivedCount=N, timestamp=T}
 local chunkBuffer = {}
 
+-- Recently reassembled chunk keys: key = senderID .. "_" .. msgID, value = timestamp
+-- Prevents duplicate chunks from other channels creating orphaned buffers after reassembly
+local reassembledKeys = {}
+
 -- Deduplication cache: key = senderID .. "_" .. timestamp, value = true
 local dedupCache = {}
 local dedupCacheSize = 0
@@ -24,6 +28,7 @@ local outgoingMsgID = 0
 function BloodPact_SyncEngine:Initialize()
     messageQueue = {}
     chunkBuffer = {}
+    reassembledKeys = {}
     dedupCache = {}
     dedupCacheSize = 0
     outgoingMsgID = math.random(1, 9999)
@@ -342,6 +347,8 @@ function BloodPact_SyncEngine:HandleChunk(msg, sender)
     if not self:IsMessageForOurPact(data.pactCode) then return end
 
     local key = (data.senderID or "?") .. "_" .. tostring(data.msgID)
+    -- Skip chunks for messages already reassembled (duplicate from another channel)
+    if reassembledKeys[key] then return end
     if not chunkBuffer[key] then
         chunkBuffer[key] = {
             chunks        = {},
@@ -364,6 +371,7 @@ function BloodPact_SyncEngine:HandleChunk(msg, sender)
             fullMsg = fullMsg .. (buf.chunks[i] or "")
         end
         chunkBuffer[key] = nil
+        reassembledKeys[key] = GetTime()
         -- Re-process the reassembled message
         self:OnAddonMessage(fullMsg, "CHUNK", data.senderID)
     end
@@ -384,6 +392,16 @@ function BloodPact_SyncEngine:CleanExpiredChunks()
     for _, key in ipairs(toRemove) do
         BloodPact_Logger:Warning("Chunk buffer expired for key: " .. key)
         chunkBuffer[key] = nil
+    end
+    -- Clean stale reassembled keys
+    toRemove = {}
+    for key, t in pairs(reassembledKeys) do
+        if now - t > BLOODPACT_CHUNK_TIMEOUT then
+            table.insert(toRemove, key)
+        end
+    end
+    for _, key in ipairs(toRemove) do
+        reassembledKeys[key] = nil
     end
 end
 
