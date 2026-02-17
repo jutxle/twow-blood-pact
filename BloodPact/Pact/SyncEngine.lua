@@ -193,15 +193,19 @@ function BloodPact_SyncEngine:SendOnAllChannels(msg)
         msg = string.sub(msg, 1, 254)
     end
 
-    local sent = false
+    -- Send on the first available channel only.
+    -- Sending on multiple channels per flush can trip WoW's internal addon
+    -- message throttle, causing chunks to be silently dropped mid-sequence.
+    -- Priority: GUILD > RAID > PARTY (pact members share at least one channel).
+    -- Wrap SendAddonMessage with pcall as safety net against Hooks.lua validation.
 
-    -- Wrap SendAddonMessage with pcall as safety net against Hooks.lua validation
     if IsInGuild and IsInGuild() then
         if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
             BloodPact_Debug:TraceOutgoing(msg, "GUILD")
         end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "GUILD")
-        if ok then sent = true end
+        if ok then return end
+        BloodPact_Logger:Warning("GUILD send failed: " .. tostring(err))
     end
 
     local numRaid = GetNumRaidMembers and GetNumRaidMembers() or 0
@@ -210,18 +214,18 @@ function BloodPact_SyncEngine:SendOnAllChannels(msg)
             BloodPact_Debug:TraceOutgoing(msg, "RAID")
         end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "RAID")
-        if ok then sent = true end
+        if ok then return end
+        BloodPact_Logger:Warning("RAID send failed: " .. tostring(err))
     elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
         if BloodPact_Debug and BloodPact_Debug:IsTraceEnabled() then
             BloodPact_Debug:TraceOutgoing(msg, "PARTY")
         end
         local ok, err = pcall(SendAddonMessage, BLOODPACT_ADDON_PREFIX, msg, "PARTY")
-        if ok then sent = true end
+        if ok then return end
+        BloodPact_Logger:Warning("PARTY send failed: " .. tostring(err))
     end
 
-    if not sent then
-        BloodPact_Logger:Info("No channel available for addon message (not in guild/party/raid).")
-    end
+    BloodPact_Logger:Info("No channel available for addon message (not in guild/party/raid).")
 end
 
 -- ============================================================
@@ -390,7 +394,11 @@ function BloodPact_SyncEngine:CleanExpiredChunks()
         end
     end
     for _, key in ipairs(toRemove) do
-        BloodPact_Logger:Warning("Chunk buffer expired for key: " .. key)
+        local buf = chunkBuffer[key]
+        local received = buf and buf.receivedCount or "?"
+        local total = buf and buf.totalChunks or "?"
+        BloodPact_Logger:Warning("Chunk buffer expired for key: " .. key ..
+            " (received " .. tostring(received) .. "/" .. tostring(total) .. " chunks)")
         chunkBuffer[key] = nil
     end
     -- Clean stale reassembled keys
