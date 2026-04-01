@@ -31,7 +31,9 @@ function BloodPact_OwnershipManager:DetermineNewOwner(members, excludeAccountID)
 end
 
 -- Called when the current player (who is the pact owner) records a death.
--- Checks if this player now has no living characters and transfers ownership.
+-- Only transfers ownership if the owner has no remaining living characters.
+-- Per FR6.1: transfer when the owner's highest-level character dies AND they have
+-- no other living characters tracked by the addon.
 function BloodPact_OwnershipManager:OnOwnerDeath()
     if not BloodPactAccountDB or not BloodPactAccountDB.pact then return end
 
@@ -41,13 +43,26 @@ function BloodPact_OwnershipManager:OnOwnerDeath()
 
     if ownerID ~= selfID then return end  -- we are not the owner
 
-    -- Check if self still has living characters (simplified: assume dead after this death)
-    -- The addon doesn't know about non-dead characters, so we just transfer now.
+    -- Check if we still have living characters (characters table tracks alive chars;
+    -- DeathDataManager:RecordDeath removes dead chars from this table)
+    if BloodPactAccountDB.characters then
+        local hasLiving = false
+        for _ in pairs(BloodPactAccountDB.characters) do
+            hasLiving = true
+            break
+        end
+        if hasLiving then
+            BloodPact_Logger:Info("Owner died but still has living characters. Ownership retained.")
+            return
+        end
+    end
+
     local newOwner = self:DetermineNewOwner(pact.members, selfID)
 
     if newOwner then
         pact.ownerAccountID = newOwner
-        BloodPact_Logger:Print("Pact ownership transferred to: " .. newOwner)
+        local displayName = BloodPact_AccountIdentity:GetDisplayNameFor(newOwner) or newOwner
+        BloodPact_Logger:Print("Pact ownership transferred to: " .. displayName)
         BloodPact_SyncEngine:BroadcastOwnershipTransfer(selfID, newOwner)
     else
         -- All members dead; pact becomes dormant

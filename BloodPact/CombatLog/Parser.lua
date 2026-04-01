@@ -10,21 +10,34 @@ BloodPact_Parser.attackerBuffer = {}
 BloodPact_Parser.attackerBufferPos = 0
 
 -- Check if a CHAT_MSG_COMBAT_HOSTILE_DEATH message indicates the player died
--- Message formats: "X dies.", "X is slain by Y.", etc.
+-- Message formats: "X dies.", "X is slain by Y.", "You have been slain by Y!"
+-- We must verify the player name is the SUBJECT (start of message), not a substring
+-- of another entity's name (e.g. player "Bob" should not match "Bobby dies.").
 function BloodPact_Parser:IsPlayerDeathMessage(msg)
     if not msg then return false end
     local playerName = UnitName("player")
     if not playerName then return false end
 
-    -- Check if player name appears in the message
-    if not string.find(msg, playerName, 1, true) then
+    -- "You have been slain" is the first-person form in some 1.12 builds
+    if string.find(msg, "You have been slain", 1, true) then
+        return true
+    end
+
+    -- Check if the message starts with the player name followed by a space or non-alpha char
+    -- This prevents "Bob" matching "Bobby dies." or "Bobcat is slain by X."
+    local nameLen = string.len(playerName)
+    if string.sub(msg, 1, nameLen) ~= playerName then
+        return false
+    end
+    -- Ensure the character after the name is not a letter (word boundary check)
+    local charAfter = string.sub(msg, nameLen + 1, nameLen + 1)
+    if charAfter and string.find(charAfter, "[A-Za-z]") then
         return false
     end
 
     -- Verify it's a death message (not just a mention)
-    if string.find(msg, "dies", 1, true) or
-       string.find(msg, "is slain", 1, true) or
-       string.find(msg, "have been slain", 1, true) then
+    if string.find(msg, " dies", 1, true) or
+       string.find(msg, " is slain", 1, true) then
         return true
     end
 

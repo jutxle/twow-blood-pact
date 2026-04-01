@@ -40,7 +40,7 @@ function BloodPact_SavedVariablesHandler:ValidateData()
         BloodPactAccountDB.config = {
             uiScale            = 1.0,
             showTimeline       = true,
-            manualHardcoreFlag = true,
+            manualHardcoreFlag = false,  -- default false; user must opt-in to avoid tracking non-HC chars
             windowX            = nil,
             windowY            = nil,
             windowAlpha        = 1.0

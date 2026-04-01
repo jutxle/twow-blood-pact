@@ -275,8 +275,8 @@ function BloodPact_SyncEngine:HandleDeathAnnounce(msg, sender)
     local senderID, pactCode, record = BloodPact_Serialization:DeserializeDeathAnnounce(msg)
     if not senderID or not record then return end
     if not self:IsMessageForOurPact(pactCode) then return end
-    if self:IsDuplicate(senderID, record.timestamp) then return end
-    self:MarkSeen(senderID, record.timestamp)
+    if self:IsDuplicate(senderID, record.timestamp, record) then return end
+    self:MarkSeen(senderID, record.timestamp, record)
 
     -- Don't process our own deaths (we already recorded them locally)
     if senderID == BloodPact_AccountIdentity:GetAccountID() then return end
@@ -438,13 +438,19 @@ function BloodPact_SyncEngine:IsMessageForOurPact(pactCode)
     return BloodPactAccountDB.pact.joinCode == pactCode
 end
 
-function BloodPact_SyncEngine:IsDuplicate(senderID, timestamp)
-    local key = (senderID or "?") .. "_" .. tostring(timestamp)
+function BloodPact_SyncEngine:IsDuplicate(senderID, timestamp, record)
+    -- Build a more specific key to avoid collisions when two deaths share the
+    -- same sender+timestamp (e.g. two characters dying in the same second).
+    local charName = (record and record.characterName) or ""
+    local level = (record and tostring(record.level or 0)) or "0"
+    local key = (senderID or "?") .. "_" .. tostring(timestamp) .. "_" .. charName .. "_" .. level
     return dedupCache[key] == true
 end
 
-function BloodPact_SyncEngine:MarkSeen(senderID, timestamp)
-    local key = (senderID or "?") .. "_" .. tostring(timestamp)
+function BloodPact_SyncEngine:MarkSeen(senderID, timestamp, record)
+    local charName = (record and record.characterName) or ""
+    local level = (record and tostring(record.level or 0)) or "0"
+    local key = (senderID or "?") .. "_" .. tostring(timestamp) .. "_" .. charName .. "_" .. level
     if not dedupCache[key] then
         dedupCache[key] = true
         dedupCacheSize = dedupCacheSize + 1

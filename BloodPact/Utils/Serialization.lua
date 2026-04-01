@@ -279,7 +279,8 @@ function BloodPact_Serialization:SerializeChunk(senderID, pactCode, msgID, chunk
 end
 
 function BloodPact_Serialization:DeserializeChunk(str)
-    -- Split manually since payload may contain tildes
+    -- Split first 6 header fields; everything after the 6th delimiter is payload
+    -- (payload may contain tildes, so we stop splitting after the header)
     local fields = {}
     local pos = 1
     local len = string.len(str)
@@ -297,16 +298,24 @@ function BloodPact_Serialization:DeserializeChunk(str)
         table.insert(fields, part)
         fieldCount = fieldCount + 1
     end
-    -- Remainder of string (from pos) is payload
+    -- Remainder of string (from pos) is the payload
 
+    if table.getn(fields) < 6 then return nil end
     if fields[1] ~= "CK" then return nil end
+
+    -- Payload is everything after the 6th ~ delimiter
+    local payload = ""
+    if pos <= len then
+        payload = string.sub(str, pos)
+    end
+
     return {
         senderID    = Unescape(fields[2]),
         pactCode    = Unescape(fields[3]),
         msgID       = tonumber(fields[4]) or 0,
         chunkIdx    = tonumber(fields[5]) or 0,
         totalChunks = tonumber(fields[6]) or 0,
-        payload     = fields[7] or string.sub(str, pos)
+        payload     = payload
     }
 end
 

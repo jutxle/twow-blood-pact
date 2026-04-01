@@ -273,6 +273,7 @@ function BloodPact_DeathDataManager:WipeAllDeaths()
 end
 
 -- Store synced deaths from a pact member
+-- Uses ConflictResolver for duplicate detection and conflict resolution (FR5.3/FR5.4)
 function BloodPact_DeathDataManager:StoreSyncedDeath(memberAccountID, deathRecord)
     if not BloodPactAccountDB or not BloodPactAccountDB.pact then return end
     if not BloodPactAccountDB.pact.syncedDeaths then
@@ -294,48 +295,39 @@ function BloodPact_DeathDataManager:StoreSyncedDeath(memberAccountID, deathRecor
         syncedDeaths[memberAccountID][charName] = {}
     end
 
-    -- Check for duplicate (same instance + timestamp within 10s + same level)
+    -- Use ConflictResolver for proper duplicate detection and timestamp-based resolution
     local charDeaths = syncedDeaths[memberAccountID][charName]
-    for _, existing in ipairs(charDeaths) do
-        if (existing.characterInstanceID == deathRecord.characterInstanceID) and
-           math.abs(existing.timestamp - deathRecord.timestamp) <= 10 and
-           existing.level == deathRecord.level then
-            -- Already have this death
-            return false
-        end
+    local isNew = BloodPact_ConflictResolver:MergeIntoList(charDeaths, deathRecord)
+
+    -- Enforce limit per character per member and sort by timestamp
+    BloodPact_ConflictResolver:PruneAndSort(charDeaths)
+
+    if isNew then
+        self.dirtyFlag = true
     end
-
-    table.insert(charDeaths, deathRecord)
-
-    -- Enforce limit per character per member
-    while table.getn(charDeaths) > BLOODPACT_MAX_DEATHS_PER_CHAR do
-        table.remove(charDeaths, 1)
-    end
-
-    self.dirtyFlag = true
-    return true
+    return isNew
 end
 
 -- Get all deaths from all pact members (including self), sorted by timestamp
 function BloodPact_DeathDataManager:GetAllPactDeaths()
     local allDeaths = {}
 
-    -- Own deaths
+    -- Own deaths (shallow copy to avoid mutating saved records)
     local ownID = BloodPact_AccountIdentity:GetAccountID()
     for _, deathList in pairs(BloodPactAccountDB.deaths or {}) do
         for _, death in ipairs(deathList) do
-            local d = death
+            local d = self:ShallowCopy(death)
             d.ownerAccountID = ownID
             table.insert(allDeaths, d)
         end
     end
 
-    -- Synced deaths from other members
+    -- Synced deaths from other members (shallow copy to avoid mutating saved records)
     if BloodPactAccountDB.pact and BloodPactAccountDB.pact.syncedDeaths then
         for memberID, charMap in pairs(BloodPactAccountDB.pact.syncedDeaths) do
             for _, deathList in pairs(charMap) do
                 for _, death in ipairs(deathList) do
-                    local d = death
+                    local d = self:ShallowCopy(death)
                     d.ownerAccountID = memberID
                     table.insert(allDeaths, d)
                 end
@@ -347,6 +339,16 @@ function BloodPact_DeathDataManager:GetAllPactDeaths()
         return a.timestamp > b.timestamp
     end)
     return allDeaths
+end
+
+-- Create a shallow copy of a table (one level deep) to avoid mutating the original
+function BloodPact_DeathDataManager:ShallowCopy(src)
+    if type(src) ~= "table" then return src end
+    local copy = {}
+    for k, v in pairs(src) do
+        copy[k] = v
+    end
+    return copy
 end
 
 -- Get death count for a specific pact member (by account ID).
